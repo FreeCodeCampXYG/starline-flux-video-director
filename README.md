@@ -63,6 +63,28 @@ python scripts/setup_ffmpeg.py --install
 
 脚本按平台调用：Windows `winget install --id Gyan.FFmpeg.Shared --exact`，macOS `brew install ffmpeg`，Ubuntu/Debian `apt-get install ffmpeg`，Fedora `dnf install ffmpeg`，Arch `pacman -S ffmpeg`。它不会自行下载，也不会修改现有 FFmpeg。若已有自定义安装，在项目 JSON 设置 `ffmpeg_path` 与 `ffprobe_path` 为两个可执行文件的绝对路径。
 
+### yt-dlp（自动下载回退，可选）
+
+先检测现有工具，不联网：
+
+```powershell
+python scripts/setup_ytdlp.py
+```
+
+只有在你明确同意联网安装后运行：
+
+```powershell
+python scripts/setup_ytdlp.py --install
+```
+
+获取规则：只从开源项目 [yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp) 官方 GitHub Release 下载；按 Windows、macOS、Linux 与 CPU 架构选择二进制；同时读取同一 Release 的 `SHA2-256SUMS` 并验证 SHA-256；校验成功后才原子安装到用户级 Starline 工具目录。脚本不访问第三方下载站、不静默覆盖；升级托管版本必须显式使用 `--install --force`。无法自动识别的平台会停止，并要求用户核对官方 Release 后通过 `--asset` 指定。
+
+已有自定义工具时无需复制或重装：
+
+```powershell
+python scripts/playground_loop.py project.json --yt-dlp "D:\path\to\yt-dlp.exe"
+```
+
 本地安装到个人 Skills 目录（不会发布网络）：
 
 ```powershell

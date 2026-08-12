@@ -3,7 +3,7 @@
   "generated_at": "2026-08-13",
   "package": {
     "name": "starline-flux-video-director",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "owner": "墨点星痕 (starline)",
     "maturity_tier": "governed",
     "lifecycle_stage": null,
@@ -67,7 +67,8 @@
     "scripts": [
       "scripts\\flux_video_loop.py",
       "scripts\\playground_loop.py",
-      "scripts\\setup_ffmpeg.py"
+      "scripts\\setup_ffmpeg.py",
+      "scripts\\setup_ytdlp.py"
     ],
     "evals": [
       "evals\\trigger_cases.json"
