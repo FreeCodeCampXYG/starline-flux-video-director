@@ -32,6 +32,18 @@ class SetupYtdlpTests(unittest.TestCase):
         text = f"{'b' * 64}  yt-dlp_arm64.exe\n{digest} *yt-dlp.exe\n"
         self.assertEqual(MODULE.parse_sha256(text, "yt-dlp.exe"), digest)
 
+    def test_socks_proxy_uses_remote_dns(self) -> None:
+        self.assertEqual(
+            MODULE.normalized_curl_proxy("socks5://127.0.0.1:10808"),
+            "socks5h://127.0.0.1:10808",
+        )
+
+    def test_http_proxy_is_unchanged(self) -> None:
+        self.assertEqual(
+            MODULE.normalized_curl_proxy("http://127.0.0.1:10808"),
+            "http://127.0.0.1:10808",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

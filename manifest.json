@@ -1,6 +1,6 @@
 {
   "name": "starline-flux-video-director",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "updated_at": "2026-08-13",
   "owner": "墨点星痕 (starline)",
   "author": {"name": "墨点星痕", "english_name": "starline"},
@@ -22,7 +22,8 @@
     "verified_ytdlp_download",
     "rate_limit_card_retry_flow",
     "human_paced_input_sequence",
-    "official_ytdlp_acquisition"
+    "official_ytdlp_acquisition",
+    "explicit_proxy_bootstrap"
   ],
   "naming": {"default_prefix": "starline-", "preserve_existing_name_on_update": true},
   "permissions": {

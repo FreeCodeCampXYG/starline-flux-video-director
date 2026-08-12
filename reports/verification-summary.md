@@ -4,7 +4,7 @@
 - Package validation: pass, zero failures, zero warnings.
 - Isolated workspace-copy validation: pass, zero failures, zero warnings.
 - Trigger evaluation: 13/13 passed, no false positive or false negative.
-- Python unit tests: 14/14 passed, including explicit service failure, active queue, console-noise classification, official yt-dlp platform mapping, unsupported-platform stop, and exact checksum selection.
+- Python unit tests: 16/16 passed, including explicit service failure, active queue, console-noise classification, official yt-dlp platform mapping, unsupported-platform stop, exact checksum selection, SOCKS5H DNS routing and HTTP proxy preservation.
 - Python compilation: pass.
 - Plan check: 6 shots, each 20 seconds, `fhd`, shared-frame paths A→B→C→D→E→F→G.
 - Secret-pattern scan: no embedded API key or live signed media credential found.

@@ -77,6 +77,14 @@ python scripts/setup_ytdlp.py
 python scripts/setup_ytdlp.py --install
 ```
 
+如果访问 GitHub 需要本机 10808 SOCKS5 代理：
+
+```powershell
+python scripts/setup_ytdlp.py --install --proxy socks5://127.0.0.1:10808
+```
+
+显式代理只对当前安装进程生效，不写入文件或仓库。SOCKS5 会转换为 `socks5h://`，让 GitHub 域名解析也通过代理。GitHub Release 元数据、`SHA2-256SUMS` 和二进制始终使用同一代理策略。未传 `--proxy` 时，Python 会使用当前进程已有的标准代理环境变量；都没有时才直连。
+
 获取规则：只从开源项目 [yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp) 官方 GitHub Release 下载；按 Windows、macOS、Linux 与 CPU 架构选择二进制；同时读取同一 Release 的 `SHA2-256SUMS` 并验证 SHA-256；校验成功后才原子安装到用户级 Starline 工具目录。脚本不访问第三方下载站、不静默覆盖；升级托管版本必须显式使用 `--install --force`。无法自动识别的平台会停止，并要求用户核对官方 Release 后通过 `--asset` 指定。
 
 已有自定义工具时无需复制或重装：
