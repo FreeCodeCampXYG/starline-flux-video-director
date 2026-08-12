@@ -1,5 +1,19 @@
 # Starline FLUX Video Director
 
+## Install with npx
+
+Install this skill for Codex, Claude Code, Cursor, and other supported agents:
+
+```bash
+npx skills add FreeCodeCampXYG/starline-flux-video-director --skill starline-flux-video-director --all
+```
+
+For a global user-level installation, add `--global`:
+
+```bash
+npx skills add FreeCodeCampXYG/starline-flux-video-director --skill starline-flux-video-director --all --global
+```
+
 作者：**墨点星痕**｜英文名：**starline**
 
 把 STAR 故事、课程总结或项目复盘，编排成由人操作 BFL Playground、由脚本负责末帧接力和本地管理的 FLUX 3 多镜头视频项目。
@@ -27,7 +41,7 @@ python -m playwright install chromium
 Copy-Item -Recurse -Force . "$env:USERPROFILE\.codex\skills\starline-flux-video-director"
 ```
 
-公开仓库发布后可使用标准安装命令：`npx skills add <owner>/<repo> --skill starline-flux-video-director`。当前包尚未发布，因此不要把占位符命令当成安装证明。
+Verify the package after installation with `npx skills list` or `npx skills list --global`.
 
 ## Examples｜你可以直接这样说
 
