@@ -3,7 +3,7 @@ name: starline-flux-video-director
 description: Safely direct, plan, generate, resume, and review multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback when API submission is unavailable. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, or consistent character/camera/audio across generated clips. Do not use for ordinary video editing or unbounded unattended rendering.
 metadata:
   author: "墨点星痕 (starline)"
-  version: "1.2.1"
+  version: "1.2.2"
 ---
 
 # Starline FLUX Video Director
@@ -55,6 +55,7 @@ metadata:
 - 脚本按平台架构选择官方资产：Windows x64/ARM64/x86，macOS 通用二进制，Linux x64/ARM64。无法识别的平台停止，必须人工核对官方资产后显式传 `--asset`。
 - 二进制必须与同一 Release 的 `SHA2-256SUMS` 精确匹配，校验成功后原子安装；Unix 补执行权限，并以 `--version` 作为最终可执行验证。
 - 默认安装到用户级 Starline 工具目录，不写入 Skill 包，也不要求管理员权限。更新已有托管版本必须由用户显式传 `--install --force`。
+- 需要 10808 SOCKS5 时使用 `python scripts/setup_ytdlp.py --install --proxy socks5://127.0.0.1:10808`。脚本调用系统 curl 并转换为 `socks5h://`，使 GitHub API、校验文件和二进制的 DNS 与传输走同一代理；代理值只存在于当前命令，不保存、不打印。
 
 把一个叙事目标编排成连续、可恢复、可审查的 FLUX 3 多镜头项目。主路径使用 BFL API；当 API 因额度或访问条件不可用、但用户已登录的免费 Playground 可用时，可显式切换到受保护的浏览器回退模式。FFmpeg 末帧提取和本地状态管理由脚本完成。
 

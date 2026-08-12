@@ -2,7 +2,7 @@
 
 ## Result
 
-- Skill: `starline-flux-video-director` v1.2.1
+- Skill: `starline-flux-video-director` v1.2.2
 - Job: turn a STAR narrative into a resumable chain of FHD FLUX 3 i2v clips whose adjacent shots share the exact same boundary frame.
 - Status: local, not published.
 
@@ -29,7 +29,7 @@
 
 ## Limits
 
-- v1.2.1 additionally acquires yt-dlp only from the official open-source GitHub Release, selects platform assets, verifies the matching SHA2-256SUMS digest, atomically installs to a user-level tool directory, and refuses silent overwrite.
+- v1.2.2 additionally supports explicit one-shot HTTP or SOCKS5 proxy bootstrap. SOCKS5 is normalized to socks5h so GitHub metadata, checksum, binary, and DNS resolution share the same proxy path; proxy values are never persisted.
 
 - `BFL_API_KEY` and seven final keyframe images are not present, by design.
 - No paid/free live request was submitted from this process.

@@ -64,10 +64,40 @@ def parse_sha256(text: str, asset: str) -> str:
     raise RuntimeError(f"官方校验文件中没有资产：{asset}")
 
 
-def request_bytes(url: str) -> bytes:
-    """使用标准代理环境变量访问官方 GitHub，并拒绝非 HTTPS 初始地址。"""
+def normalized_curl_proxy(proxy: str) -> str:
+    """让 SOCKS5 的 DNS 解析也经过代理，避免本地 DNS 泄漏或失败。"""
+    return proxy.replace("socks5://", "socks5h://", 1)
+
+
+def request_bytes(url: str, proxy: str | None = None) -> bytes:
+    """按显式代理或标准环境访问官方 GitHub，并拒绝非 HTTPS 初始地址。"""
     if not url.startswith("https://"):
         raise RuntimeError(f"拒绝非 HTTPS 下载地址：{url}")
+    if proxy:
+        curl = shutil.which("curl.exe") or shutil.which("curl")
+        if not curl:
+            raise RuntimeError("显式代理下载需要系统 curl；未找到 curl/curl.exe")
+        result = subprocess.run(
+            [
+                curl,
+                "--location",
+                "--fail",
+                "--silent",
+                "--show-error",
+                "--connect-timeout", "30",
+                "--max-time", "180",
+                "--proxy", normalized_curl_proxy(proxy),
+                "--header", "Accept: application/vnd.github+json",
+                "--user-agent", "starline-flux-video-director",
+                url,
+            ],
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            message = result.stderr.decode("utf-8", errors="replace").strip()
+            raise RuntimeError(f"通过显式代理访问 GitHub 失败：{message[:300]}")
+        return result.stdout
     request = urllib.request.Request(
         url,
         headers={"Accept": "application/vnd.github+json", "User-Agent": "starline-flux-video-director"},
@@ -76,9 +106,9 @@ def request_bytes(url: str) -> bytes:
         return response.read()
 
 
-def latest_release() -> dict:
+def latest_release(proxy: str | None = None) -> dict:
     """读取 yt-dlp 官方最新 Release 元数据。"""
-    return json.loads(request_bytes(LATEST_RELEASE_API).decode("utf-8"))
+    return json.loads(request_bytes(LATEST_RELEASE_API, proxy).decode("utf-8"))
 
 
 def find_asset(release: dict, name: str) -> dict:
@@ -119,19 +149,19 @@ def detect_existing(explicit: Path | None) -> tuple[Path | None, str | None]:
     return None, None
 
 
-def install(asset_name: str, target: Path, force: bool) -> str:
+def install(asset_name: str, target: Path, force: bool, proxy: str | None = None) -> str:
     """下载官方二进制和校验文件，验证后原子安装。"""
     if target.exists() and not force:
         raise RuntimeError(f"目标已存在：{target}；如需更新请显式使用 --force")
-    release = latest_release()
+    release = latest_release(proxy)
     binary_asset = find_asset(release, asset_name)
     checksum_asset = find_asset(release, CHECKSUM_ASSET)
-    checksums = request_bytes(checksum_asset["browser_download_url"]).decode("utf-8")
+    checksums = request_bytes(checksum_asset["browser_download_url"], proxy).decode("utf-8")
     expected_digest = parse_sha256(checksums, asset_name)
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(prefix="yt-dlp-", suffix=".download", dir=target.parent, delete=False) as handle:
         temporary = Path(handle.name)
-        payload = request_bytes(binary_asset["browser_download_url"])
+        payload = request_bytes(binary_asset["browser_download_url"], proxy)
         handle.write(payload)
     try:
         actual_digest = hashlib.sha256(temporary.read_bytes()).hexdigest()
@@ -156,6 +186,7 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="显式覆盖托管路径的现有版本；必须与 --install 同用")
     parser.add_argument("--target", type=Path, help="安装到指定路径；默认使用用户级 Starline 工具目录")
     parser.add_argument("--asset", help="显式选择官方 Release 资产；仅用于自动识别不支持的平台")
+    parser.add_argument("--proxy", help="仅本次下载使用的代理，例如 socks5://127.0.0.1:10808；不保存、不打印")
     args = parser.parse_args()
     if args.force and not args.install:
         raise SystemExit("--force 必须与 --install 同时使用")
@@ -176,7 +207,7 @@ def main() -> int:
         print("用户确认联网安装后运行：python scripts/setup_ytdlp.py --install")
         return 2
     try:
-        installed_version = install(asset, target, args.force)
+        installed_version = install(asset, target, args.force, args.proxy)
     except Exception as exc:
         print(f"yt-dlp 安装失败：{exc}", file=sys.stderr)
         return 3
