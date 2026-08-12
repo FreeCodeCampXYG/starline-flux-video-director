@@ -3,7 +3,7 @@ name: starline-flux-video-director
 description: Safely direct, plan, generate, resume, and review multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback when API submission is unavailable. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, or consistent character/camera/audio across generated clips. Do not use for ordinary video editing or unbounded unattended rendering.
 metadata:
   author: "墨点星痕 (starline)"
-  version: "1.2.0"
+  version: "1.2.1"
 ---
 
 # Starline FLUX Video Director
@@ -47,6 +47,14 @@ metadata:
 - 优先在已登录浏览器内下载；失败后使用 `yt-dlp` 经 `socks5h://127.0.0.1:10808` 下载同一准确 URL。
 - 始终先写 `.mp4.part`，检查 `ftyp` 容器头、FFprobe 视频流和正时长后再原子改名。HTML/错误页不得留下伪 `.mp4`。
 - 使用 `--output-video <绝对路径.mp4>` 指定成片位置；使用 `--download-only --shot-id <id>` 可恢复只下载而不重新提交。
+
+## yt-dlp 开源获取规则
+
+- 先运行 `python scripts/setup_ytdlp.py` 检测显式路径、PATH 和用户级托管目录；已有可执行版本时不下载、不覆盖。
+- 只有用户明确同意联网安装后，才运行 `python scripts/setup_ytdlp.py --install`。下载源限定为开源项目 `yt-dlp/yt-dlp` 的官方 GitHub Release（Unlicense），禁止第三方下载站和不明镜像。
+- 脚本按平台架构选择官方资产：Windows x64/ARM64/x86，macOS 通用二进制，Linux x64/ARM64。无法识别的平台停止，必须人工核对官方资产后显式传 `--asset`。
+- 二进制必须与同一 Release 的 `SHA2-256SUMS` 精确匹配，校验成功后原子安装；Unix 补执行权限，并以 `--version` 作为最终可执行验证。
+- 默认安装到用户级 Starline 工具目录，不写入 Skill 包，也不要求管理员权限。更新已有托管版本必须由用户显式传 `--install --force`。
 
 把一个叙事目标编排成连续、可恢复、可审查的 FLUX 3 多镜头项目。主路径使用 BFL API；当 API 因额度或访问条件不可用、但用户已登录的免费 Playground 可用时，可显式切换到受保护的浏览器回退模式。FFmpeg 末帧提取和本地状态管理由脚本完成。
 

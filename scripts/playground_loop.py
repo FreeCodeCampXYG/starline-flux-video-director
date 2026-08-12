@@ -20,7 +20,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHROME = Path(r"D:\Programs\ChromeGo\TorBrowserPortable\chrome\Chrome-bin\chrome.exe")
 DEFAULT_PROFILE = Path(r"D:\Programs\ChromeGo\TorBrowserPortable\v2rayn\v2rayn2025\chrome-data")
 DEFAULT_PROXY = "socks5://127.0.0.1:10808"
-DEFAULT_YTDLP = Path(r"D:\日常软件\视频剪辑软件\yt-dlp.exe")
+if os.name == "nt":
+    _YTDLP_DATA_HOME = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    DEFAULT_YTDLP = _YTDLP_DATA_HOME / "starline" / "tools" / "yt-dlp" / "yt-dlp.exe"
+else:
+    _YTDLP_DATA_HOME = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    DEFAULT_YTDLP = _YTDLP_DATA_HOME / "starline" / "tools" / "yt-dlp" / "yt-dlp"
 DEFAULT_PROXY_BYPASS = "localhost;127.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*"
 PLAYGROUND_URL = "https://dashboard.bfl.ai/"
 HUMAN_PACE_MIN_SECONDS = 1.0
