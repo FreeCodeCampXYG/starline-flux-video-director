@@ -157,7 +157,11 @@ def resolve_executable(project: dict[str, Any], field: str, name: str) -> str:
     found = shutil.which(name)
     if found:
         return found
-    raise ProjectError(f"找不到 {name}；请在项目中设置 {field} 或加入 PATH")
+    raise ProjectError(
+        f"找不到 {name}；请在项目中设置 {field} 或加入 PATH。"
+        "可先运行 python scripts/setup_ffmpeg.py 检测，"
+        "并在明确同意联网安装后运行 python scripts/setup_ffmpeg.py --install"
+    )
 
 
 def extract_last_frame(video: Path, output: Path, ffmpeg: str, ffprobe: str) -> None:

@@ -35,6 +35,22 @@ python -m pip install -r requirements.txt
 python -m playwright install chromium
 ```
 
+### FFmpeg / FFprobe（连续视频必需）
+
+这个技能会从每段 MP4 提取末帧，作为下一段首帧，所以必须同时安装 `ffmpeg` 与 `ffprobe`。先检查：
+
+```powershell
+python scripts/setup_ffmpeg.py
+```
+
+如未安装，且你同意让脚本联网调用系统包管理器下载，运行：
+
+```powershell
+python scripts/setup_ffmpeg.py --install
+```
+
+脚本按平台调用：Windows `winget install --id Gyan.FFmpeg.Shared --exact`，macOS `brew install ffmpeg`，Ubuntu/Debian `apt-get install ffmpeg`，Fedora `dnf install ffmpeg`，Arch `pacman -S ffmpeg`。它不会自行下载，也不会修改现有 FFmpeg。若已有自定义安装，在项目 JSON 设置 `ffmpeg_path` 与 `ffprobe_path` 为两个可执行文件的绝对路径。
+
 本地安装到个人 Skills 目录（不会发布网络）：
 
 ```powershell

@@ -3,7 +3,7 @@
   "generated_at": "2026-08-12",
   "package": {
     "name": "starline-flux-video-director",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "owner": "墨点星痕 (starline)",
     "maturity_tier": "governed",
     "lifecycle_stage": null,
@@ -58,11 +58,13 @@
       "references\\first-shot-20s-dense-prompt.md",
       "references\\project-schema.md",
       "references\\review-scorecard.md",
-      "references\\second-shot-20s-dense-prompt.md"
+      "references\\second-shot-20s-dense-prompt.md",
+      "references\\third-shot-20s-dense-prompt.md"
     ],
     "scripts": [
       "scripts\\flux_video_loop.py",
-      "scripts\\playground_loop.py"
+      "scripts\\playground_loop.py",
+      "scripts\\setup_ffmpeg.py"
     ],
     "evals": [
       "evals\\trigger_cases.json"
