@@ -21,14 +21,26 @@ npx skills add FreeCodeCampXYG/starline-flux-video-director --skill starline-flu
 ## 它解决什么
 
 - 使用 7 张共享边界帧生成 6 段 `i2v`：A→B、B→C、C→D……，相邻镜头共享同一张图。
-- 人工负责 Playground 中的模型选择、图片上传、Generate、结果下载；Skill 不控制浏览器按钮。
-- 异步提交、6 秒轮询、立即下载全部样本、失败续跑。
+- 支持人工操作，也支持受保护的 Playground 自动化：复用指定 Chrome profile、按人工节奏填表、上传接力帧、提交、等待和下载。
+- 精确识别当前 Prompt 任务；处理 502/503/504、Rate limited 和未知状态，避免重复提交。
+- 浏览器下载失败时使用 `yt-dlp` 经代理回退，并用 MP4 容器头和 FFprobe 验证后原子落盘。
 - 默认仅预览；双重付费确认和最大提交数防止失控循环。
 - 提供“AI 学习 → Skill → GitHub 开源成果”的 60 秒 STAR 示例。
 
 ## Installation｜安装与快速开始
 
 要求 Python 3.10+。纯 API 规划和末帧脚本只使用标准库；Playground 浏览器回退需要 Playwright。
+
+### Prerequisites｜前置条件检查清单
+
+- [ ] Python 3.10+ 可运行，并已安装 `requirements.txt`。
+- [ ] Playground 自动化已安装 Playwright；使用外部 Chrome 时无需下载 Playwright Chromium。
+- [ ] `ffmpeg` 与 `ffprobe` 均可用，或已在项目 JSON 配置绝对路径。
+- [ ] 已准备一个用户明确授权复用的 Chrome profile；运行自动化前关闭占用该 profile 的其他 Chrome。
+- [ ] BFL Playground 已由用户完成登录；脚本不读取账号、密码或验证码。
+- [ ] 需要代理时已确认 SOCKS5 地址；示例 Windows 环境为 `127.0.0.1:10808`。
+- [ ] 自动下载回退需要 `yt-dlp`；可通过 `--yt-dlp <绝对路径>` 指定。
+- [ ] 真实生成前已确认额度、活动规则、镜头数和最大提交次数。
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -76,8 +88,9 @@ python scripts/flux_video_loop.py plan examples/ai-learning-star.project.json
 
 确认账户额度和预计提交数后：
 
+先在操作系统的用户环境变量界面配置 BFL 凭据；不要把凭据写进命令、项目 JSON、日志或仓库。重新打开终端后运行：
+
 ```powershell
-$env:BFL_API_KEY = "<your-key>"
 python scripts/flux_video_loop.py run path\to\project.json --execute --confirm-run FREE_PROMO_CONFIRMED
 ```
 
@@ -101,7 +114,7 @@ python scripts/flux_video_loop.py extract-last-frame examples/ai-learning-star.p
 
 ## 浏览器自动化（可选）
 
-当 API 明确返回不可用（例如 `402 Insufficient credits`），但免费 Playground 可用时，可切换到受保护的浏览器回退模式。严格顺序为：等待不存在 `Cancel`/排队任务 → 点击 `Reset all inputs` 并确认 Prompt 归零 → 按 API 字段重建模型、提示词、媒体和参数 → 等待 `Generate.disabled` 消失 → 正常点击并确认出现新任务。运行中禁止 Reset、禁止强制点击禁用按钮、禁止重复提交。
+当 API 明确不可用、但免费 Playground 可用时，可切换到受保护的浏览器回退模式。严格顺序为：启动冷却 → 等待无活动任务 → Reset 并确认 Prompt 归零 → 随机等待 10–20 秒 → 上传首帧并验证 CDN → 填 Prompt → 设置非时长参数 → 最后设置 Duration → 提交前冷却 → 正常点击并确认当前 Prompt 新任务。Generate 为 disabled 时只等待；运行中禁止 Reset、强制点击或无证据重交。
 
 可以让 Playwright 操作独立的 ChromeGo 会话。首次运行会打开浏览器；Google 登录、验证码和风控由你人工完成，脚本不会读取密码。默认是 dry-run，只填入镜头提示词不点击 Generate：
 
@@ -152,12 +165,21 @@ python <starline-meta-skill>/scripts/validate_skill.py .
 
 ## Troubleshooting
 
-- `Generating...` 后任务消失：该文字只是按钮瞬态。v0.3.0 必须等待右侧任务卡片发生变化并稳定 30 秒；未出现右侧任务时不判定成功，也不重复点击。
+- `Generating...` 后任务消失：该文字只是按钮瞬态。v1.2.0 必须等待当前 Prompt 对应的新任务卡并稳定；未确认时标记 unknown，不重复点击。
+- `/api/playground/generate` 返回 `502/503/504`，或匹配任务出现 `system_error / Service issue / over capacity`：只执行有界恢复。未知状态绝不自动重交。
+- 控制台出现 React 418、preload、CSP 或 iframe 警告：这些不是 BFL 任务失败证据，不触发重试。
 - 找不到 Generate：页面文字嵌套在多层 `span` 中，脚本会从精确文字向上解析真正的 `button`；不要直接对最内层 span 发送点击。
 - Start frame 没上传：脚本通过 `Attach start frame` 打开文件选择器，并等待 `Replace/Remove start frame` 与 CDN 缩略图三重证据；三者未出现时停止提交。中文源路径会先复制到纯英文工作路径。
+- 页面提示发送太快：脚本打开页面后冷却 30–45 秒、Reset 后随机等待 10–20 秒，再按“先上传首帧、再填 Prompt、最后改 Duration”的顺序错峰设置；Generate 前再冷却 30–45 秒。
+- 错误卡出现 `Rate limited` 和 `Retry`：不要 Reset 或重新上传。脚本先点击错误卡 Retry，确认主 Generate 恢复后随机等待 10–20 秒，再点击一次主 Generate；恢复模式为 `--retry-rate-limited --rate-limit-cooldown-min 10 --rate-limit-cooldown-max 20`。
+- 自动下载损坏：脚本不再抓页面最后一个视频。它只取当前 Prompt 任务 URL，浏览器下载失败则调用 `yt-dlp` 走 10808 SOCKS5H 代理，并在原子落盘前检查 MP4 头和 FFprobe。
 
 - `BFL_API_KEY 未设置`：只影响真实 `run`；`validate/plan/status` 不需要 Key。
 - `422`：项目字段不符合当前 API 严格 schema；根据返回详情修正，不要自动重试。
 - `429`：脚本会区分提交和轮询；轮询 429 不会重复提交。
 - 素材 URL 失效：优先使用本地 JPG/PNG；脚本会自动转成内联 data URL。
 - 连续性漂移：先缩小单镜事件；固定镜头运动；一次只改变一个不变量。
+
+## License｜许可证
+
+本项目采用 [MIT License](LICENSE)。你可以在保留版权与许可证声明的前提下使用、修改和再分发。

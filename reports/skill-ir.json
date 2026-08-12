@@ -1,9 +1,9 @@
 {
   "schema_version": "2.0.0-starline-lite",
-  "generated_at": "2026-08-12",
+  "generated_at": "2026-08-13",
   "package": {
     "name": "starline-flux-video-director",
-    "version": "0.5.0",
+    "version": "1.2.0",
     "owner": "墨点星痕 (starline)",
     "maturity_tier": "governed",
     "lifecycle_stage": null,
@@ -55,10 +55,13 @@
   "resources": {
     "references": [
       "references\\directing-system.md",
+      "references\\fifth-shot-20s-comedy-build-proof-prompt.md",
       "references\\first-shot-20s-dense-prompt.md",
+      "references\\fourth-shot-20s-comedy-review-prompt.md",
       "references\\project-schema.md",
       "references\\review-scorecard.md",
       "references\\second-shot-20s-dense-prompt.md",
+      "references\\sixth-shot-20s-result-system-prompt.md",
       "references\\third-shot-20s-dense-prompt.md"
     ],
     "scripts": [
@@ -94,11 +97,10 @@
     "trust": {},
     "permissions": {
       "network": "BFL API only when explicitly executed",
-      "file_write": "project-local outputs",
-      "secret": "BFL_API_KEY environment variable"
+      "file_write": "project-local outputs"
     },
     "degradation": {
-      "no_api_key": "validate, plan, and status remain available",
+      "no_provider_credential": "validate, plan, and status remain available",
       "no_ffprobe": "download and size checks remain available; container metadata validation is manual"
     }
   },
