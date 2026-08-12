@@ -1,0 +1,36 @@
+{
+  "recommended_threshold": 0.34,
+  "description_required_concepts": ["flux_video", "continuity", "orchestration"],
+  "positive_concepts": {
+    "flux_video": ["FLUX 3", "BFL", "flux-3-video", "视频 API"],
+    "continuity": ["连续", "首尾帧", "边界图", "边界帧", "keyframes", "一致性", "同一人物", "接续", "中断后继续"],
+    "orchestration": ["循环", "多镜头", "分镜", "六段", "STAR", "断点续跑", "中断后继续生成", "批量生成"]
+  },
+  "negative_patterns": [
+    "只生成一张图",
+    "普通剪辑",
+    "只写一条图片提示词",
+    "不要调用 API",
+    "解释 curl",
+    "单镜头"
+  ],
+  "should_trigger": [
+    {"text": "把这份 STAR 复盘做成连续的 FLUX 3 六镜头视频", "family": "star_film"},
+    {"text": "用首尾帧循环调用 BFL API，上一段尾帧作为下一段首帧", "family": "shared_keyframe_chain"},
+    {"text": "帮我做一个 FLUX 3 视频项目，支持中断后继续生成", "family": "resume"},
+    {"text": "Use FLUX 3 i2v keyframes to render a continuous six-shot documentary.", "family": "en_keyframes"},
+    {"text": "检查这套 flux-3-video 分镜参数和连续性，但先不要产生真实任务", "family": "audit_only"},
+    {"text": "七张边界图生成六段 20 秒 FHD 视频，保持同一人物", "family": "fhd_chain"}
+  ],
+  "should_not_trigger": [
+    {"text": "用 FLUX 生成一张公众号封面", "family": "image_only"},
+    {"text": "把现有六段视频在剪映里加字幕", "family": "editing_only"},
+    {"text": "解释一下这条 curl 是什么意思", "family": "explain_only"},
+    {"text": "给我写一个电影故事，不需要生成视频", "family": "writing_only"}
+  ],
+  "near_neighbor": [
+    {"text": "给一个独立的 FLUX 3 单镜头写提示词", "family": "single_shot_prompt"},
+    {"text": "用其他视频平台批量生成互不相关的广告片", "family": "other_provider_batch"},
+    {"text": "从一段成片继续生成下一段，但不要首尾帧", "family": "v2v_only"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "project": "ai-learning-hero-image",
+  "shots": [
+    {
+      "id": "hero-character",
+      "mode": "image",
+      "prompt": "A cinematic technology-documentary hero frame for a personal AI learning journey. One Chinese male independent developer in his early thirties, short black hair, wearing a plain dark charcoal shirt, seated at a clean modern home-studio desk at night. Three-quarter medium shot, calm focused expression, natural realistic face and hands. A large monitor casts soft deep-indigo light; one warm-gold desk lamp creates a restrained rim light. Around him are a few elegant translucent learning cards and subtle connected workflow nodes, using abstract shapes only, suggesting knowledge being organized into a reusable system. Premium commercial cinematography, realistic photography, 35mm lens, shallow depth of field, controlled contrast, deep indigo, black and warm gold color palette, clean composition, generous negative space on the right for later Chinese title overlay, coherent lighting, 16:9 landscape. No readable text, no letters, no logos, no watermark, no cyberpunk neon, no extra fingers, no duplicate person, no distorted screens, no cartoon style."
+    }
+  ]
+}

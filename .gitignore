@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.DS_Store
+
+# Local render outputs, browser diagnostics and user media may contain signed URLs.
+work/
+generated/
+clips/
+requests/
+.flux-video-state.json
+examples/keyframes/

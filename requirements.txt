@@ -1,0 +1,2 @@
+# Browser fallback only. The API/project-planning script otherwise uses Python stdlib.
+playwright>=1.52,<2

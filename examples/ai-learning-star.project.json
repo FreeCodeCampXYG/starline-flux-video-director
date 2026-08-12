@@ -1,0 +1,72 @@
+{
+  "project": "ai-learning-star-film",
+  "endpoint": "https://api.bfl.ai/v1/flux-3-video",
+  "ffmpeg_path": "D:/日常软件/视频剪辑软件/ffmpeg.exe",
+  "ffprobe_path": "D:/日常软件/视频剪辑软件/ffprobe.exe",
+  "output_dir": "./generated/ai-learning-star-film",
+  "max_submissions": 6,
+  "defaults": {
+    "aspect_ratio": "16:9",
+    "duration": 20,
+    "resolution": "fhd",
+    "generate_audio": true,
+    "safety_tolerance": 2,
+    "draft": false
+  },
+  "continuity_bible": {
+    "character": "同一位约三十岁的中国男性独立开发者，短黑发，深炭灰衬衫，自然面部与双手",
+    "set": "同一间夜间现代家庭工作室，深靛蓝环境，暖金桌灯位于画面左后方",
+    "camera": "35mm 电影镜头，视平线略低于眼睛，克制的缓慢推进或固定机位",
+    "palette": "深靛蓝、黑色、暖金，不使用夸张赛博朋克霓虹",
+    "audio": "低频电子脉冲、安静房间底噪、轻微键盘与纸张声；旁白和精确同步后期完成"
+  },
+  "shots": [
+    {
+      "id": "01-situation",
+      "star": "S",
+      "mode": "t2v",
+      "prompt": "A single unbroken 20-second cinematic technology-documentary shot. Opening 0-4 seconds: establish one Chinese male independent developer in his early thirties, short black hair, plain dark charcoal shirt, seated in a quiet modern home studio at night, deep-indigo ambient light and one warm-gold desk lamp behind him on camera-left, natural face and hands, 35mm medium three-quarter composition. Development 4-14 seconds: a few translucent abstract AI answer cards multiply gradually into many around him while he remains calm and thoughtful; the visible cause is the monitor emitting each new card. The camera performs one slow controlled push-in and the nearest cards drift softly out of focus. Closing 14-20 seconds: motion settles; one warm-gold abstract question-shaped light becomes sharp at the center of his gaze, his face stays unobstructed, camera movement nearly stops, creating a clean stable final frame for continuation. Premium realistic cinematography, restrained deep-indigo, black and warm-gold palette, continuous real time, same room geometry, no cut, no reset, no readable text, no logo, no cyberpunk neon. Audio: restrained room tone, low electronic pulse and soft glass-like card movement; no spoken dialogue.",
+      "review": {"intent": "答案泛滥、判断稀缺", "seam_out": "主角注视中心金色问号，镜头仍在极慢推进"}
+    },
+    {
+      "id": "02-task",
+      "star": "T",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue directly from the supplied opening frame, preserving the exact developer, clothing, studio geometry, light direction, palette and current camera axis. Opening 0-4 seconds: hold the warm-gold question-shaped light and the developer's gaze while the previous low electronic pulse continues. Development 4-14 seconds: the abstract answer cards descend naturally onto the desk and become visual presentation pages, transcript sheets, video timeline tiles and code fragments with no readable text; the developer guides them inward with one deliberate hand movement, and a thin warm-gold path connects the fragments into a clear task map. The camera eases gradually into a gentle three-quarter top-down view without a cut. Closing 14-20 seconds: all fragments finish connecting, the task map stabilizes, the developer's hands rest naturally, and motion settles into a clean unobstructed final frame for the next continuation. Continuous real time, no scene switch, no reset, no logos. Audio: continuous low pulse with subtle paper and interface tones; no speech.",
+      "review": {"intent": "把零散学习资料变成可复用工作流", "seam_out": "金色路径已连接为任务地图"}
+    },
+    {
+      "id": "03-action-method",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue directly from the supplied opening frame and preserve the exact person, clothes, desk, studio, lamp direction, deep-indigo and warm-gold palette. Opening 0-4 seconds: hold the completed task map in the same composition. Development 4-14 seconds: one deliberate hand gesture from the developer causes the warm-gold map to unfold smoothly into three elegant concentric planning rings and a compact modular workflow; four small abstract light agents activate clockwise to represent research, organization, verification and publishing. The developer remains the single human director and all movement stays physically connected to the map. Use one slow restrained orbital camera move, no cut. Closing 14-20 seconds: the four nodes finish illuminating, their motion slows to a gentle pulse, the developer and workflow remain clearly visible in a stable balanced frame suitable for continuation. No readable text, no logos, no geometry reset. Audio: the existing pulse continues with four quiet sequential activation tones; no dialogue.",
+      "review": {"intent": "WHY/HOW/WHAT 与 1+N 协作", "seam_out": "四个工作流节点稳定点亮"}
+    },
+    {
+      "id": "04-action-review",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the supplied workflow opening frame with the exact same developer, camera relationship, clothing, studio, light and palette. Opening 0-4 seconds: the four workflow nodes hold their gentle pulse. Development 4-14 seconds: one refined abstract artifact rises from the workflow and passes through a restrained quality loop; four warm-gold scanning rings move across it sequentially, two small flawed nodes glow red, receive visible feedback along the existing paths, and turn calm green. Nothing else changes and the developer watches attentively. Use a deliberate slow macro push-in, continuous real time, no montage. Closing 14-20 seconds: the final ring completes, all nodes remain calm green, the developer gives only a subtle natural sign of approval, and the verified artifact holds steady in a clean final composition for continuation. No readable text, no logo, no jump. Audio: continuous pulse, four material scan sounds and one soft confirmation tone; no speech.",
+      "review": {"intent": "4A 反复验收", "seam_out": "最终成果稳定呈绿色通过状态"}
+    },
+    {
+      "id": "05-action-build",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue directly from the supplied verified-artifact opening frame, preserving the exact person, studio geometry, clothing, light direction and restrained palette. Opening 0-4 seconds: hold the calm green verified state. Development 4-14 seconds: modular code blocks fold out of the verified artifact and assemble physically into a compact creator toolkit; three polished abstract artifact cards rise one after another, visually suggesting a searchable learning webpage, a reusable skill module and a source-grounded study website, using layout shapes only and never generated words. The developer connects the final module and a warm-gold pulse travels through the full system. Use one slow lateral tracking move, continuous real time, no cut or teleportation. Closing 14-20 seconds: the three cards settle into a clear triangular arrangement, pulse softly in sync, and leave the developer's face and hands unobstructed in a stable continuation frame. Audio: the low pulse grows brighter with restrained mechanical clicks; no dialogue.",
+      "review": {"intent": "安装、改造、创建、发布 Skill", "seam_out": "三项成果卡稳定悬浮，金色脉冲向外传播"}
+    },
+    {
+      "id": "06-result",
+      "star": "R",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the supplied opening frame with the exact same three artifact cards, developer, clothing, studio layout, lamp direction and color palette. Opening 0-4 seconds: the triangular cards pulse softly in sync. Development 4-14 seconds: the camera performs one slow confident pullback while the three cards expand into an elegant constellation of many small abstract learning-page thumbnails and three major open-source project nodes; all pathways grow from the existing cards without a cut. The same developer stays visible at the real desk and calmly closes a plain notebook. Closing 14-20 seconds: all movement resolves into a wide stable knowledge-atlas composition, warm-gold pathways continue softly, the developer remains still, and clean negative space opens on the right for a post-production title and GitHub attribution. Earned, restrained emotional finish, no fake interface text, no logos, no scene switch. Audio: the electronic pulse resolves into a warm sustained chord with quiet room tone; no generated speech.",
+      "review": {"intent": "一次学习变成网页、Skill 与持续迭代的开源系统", "seam_out": "宽幅收尾画面，为片名和 GitHub 署名留白"}
+    }
+  ]
+}

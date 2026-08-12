@@ -1,0 +1,27 @@
+interface:
+  display_name: "Starline FLUX Video Director"
+  author: "墨点星痕 (starline)"
+  short_description: "编排人工操作 Playground 的 FLUX 3 末帧接力视频"
+  default_prompt: "Use $starline-flux-video-director to turn my narrative into a continuity-aware FLUX 3 project for human-operated BFL Playground. Prepare one prompt per shot, preserve character/camera/audio invariants, use the previous downloaded clip's extracted last frame as the next i2v start frame, maintain resumable local state, and never automate browser buttons or claim human creative approval."
+  examples:
+    - "把这份 STAR 复盘做成连续的 FLUX 3 六镜头视频"
+    - "循环调用 BFL API，用上一段视频续写下一段并支持断点续跑"
+    - "用首尾帧生成第一段，再连续生成后面五段"
+    - "只检查这个 FLUX 视频项目，不要产生费用"
+compatibility:
+  canonical_format: "agent-skills"
+  adapter_targets:
+    - "openai"
+    - "claude"
+    - "generic"
+    - "agent-skills-compatible"
+  execution:
+    shell: "powershell-or-bash"
+    runtime: "python>=3.10"
+  permissions:
+    network: "BFL API only when explicitly executed"
+    file_write: "project-local outputs"
+    secret: "BFL_API_KEY environment variable"
+  degradation:
+    no_api_key: "validate, plan, and status remain available"
+    no_ffprobe: "download and size checks remain available; container metadata validation is manual"

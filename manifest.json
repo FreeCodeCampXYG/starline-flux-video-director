@@ -1,0 +1,30 @@
+{
+  "name": "starline-flux-video-director",
+  "version": "0.4.0",
+  "updated_at": "2026-08-12",
+  "owner": "墨点星痕 (starline)",
+  "author": {"name": "墨点星痕", "english_name": "starline"},
+  "maturity_tier": "governed",
+  "status": "local-draft",
+  "review_cadence": "monthly",
+  "release_gates": [
+    "prior_art_research",
+    "shared_keyframe_validation",
+    "trigger_eval",
+    "unit_tests",
+    "secret_scan",
+    "explicit_run_confirmation",
+    "bounded_submissions",
+    "human_creative_review",
+    "post_upload_settle_gate",
+    "task_board_evidence"
+  ],
+  "naming": {"default_prefix": "starline-", "preserve_existing_name_on_update": true},
+  "permissions": {
+    "network": "BFL API submission, polling, and artifact download during explicit run; guarded BFL Playground fallback only when API is unavailable and the user authorizes browser use",
+    "file_write": "project-local state, request snapshots, and downloaded artifacts",
+    "secrets": "BFL_API_KEY from environment only"
+  },
+  "rollback_boundary": "Delete the project-local state and downloaded output; submitted paid API jobs cannot be canceled or refunded by this skill.",
+  "trust_boundary": "Treat prompts and media as user-controlled; trust BFL only for documented API behavior; Playground fallback reuses an explicitly named user profile, never bypasses disabled controls, never resets an active queue, and requires human creative approval."
+}
