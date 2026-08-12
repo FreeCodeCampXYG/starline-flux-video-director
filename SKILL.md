@@ -3,10 +3,16 @@ name: starline-flux-video-director
 description: Safely direct, plan, generate, resume, and review multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback when API submission is unavailable. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, or consistent character/camera/audio across generated clips. Do not use for ordinary video editing or unbounded unattended rendering.
 metadata:
   author: "墨点星痕 (starline)"
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # Starline FLUX Video Director
+
+## FFmpeg 跨平台前置条件
+
+- 末帧提取与连续性接力必须同时有 `ffmpeg` 和 `ffprobe`。先运行 `python scripts/setup_ffmpeg.py` 检测。
+- 只有用户明确同意联网下载时，才运行 `python scripts/setup_ffmpeg.py --install`：Windows 使用 `winget`，macOS 使用 Homebrew，Linux 使用 apt/dnf/pacman；脚本从不自动下载。
+- 也可在项目 JSON 中显式配置 `ffmpeg_path` 与 `ffprobe_path`。路径包含空格或非 ASCII 字符时，必须作为 JSON 字符串完整保存，不能截断或经终端转码。
 
 ## 首帧上传后的提交门禁
 
