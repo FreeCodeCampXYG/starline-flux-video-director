@@ -1,7 +1,7 @@
 {
   "name": "starline-flux-video-director",
-  "version": "0.5.0",
-  "updated_at": "2026-08-12",
+  "version": "1.2.0",
+  "updated_at": "2026-08-13",
   "owner": "墨点星痕 (starline)",
   "author": {"name": "墨点星痕", "english_name": "starline"},
   "maturity_tier": "governed",
@@ -17,7 +17,11 @@
     "bounded_submissions",
     "human_creative_review",
     "post_upload_settle_gate",
-    "task_board_evidence"
+    "task_board_evidence",
+    "explicit_failure_bounded_retry",
+    "verified_ytdlp_download",
+    "rate_limit_card_retry_flow",
+    "human_paced_input_sequence"
   ],
   "naming": {"default_prefix": "starline-", "preserve_existing_name_on_update": true},
   "permissions": {

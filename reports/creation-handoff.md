@@ -2,7 +2,7 @@
 
 ## Result
 
-- Skill: `starline-flux-video-director` v0.3.0
+- Skill: `starline-flux-video-director` v1.2.0
 - Job: turn a STAR narrative into a resumable chain of FHD FLUX 3 i2v clips whose adjacent shots share the exact same boundary frame.
 - Status: local, not published.
 
@@ -29,7 +29,7 @@
 
 ## Limits
 
-- v0.3.0 treats `Generating...` as a transient acknowledgement only. Submission is confirmed only after the right-side task board changes and remains observed for the configured stabilization interval.
+- v1.2.0 treats `Generating...` as transient acknowledgement, native Generate `disabled` as an active-render guard, and a matching task card plus stable video URL as completion evidence. It uses human-paced page startup, Reset and media-first input sequencing; handles explicit Rate limited errors through the card Retry then one delayed main Generate; and downloads through the browser or yt-dlp with MP4-header and FFprobe validation.
 
 - `BFL_API_KEY` and seven final keyframe images are not present, by design.
 - No paid/free live request was submitted from this process.

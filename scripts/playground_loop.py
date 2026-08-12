@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import random
+import shutil
 import subprocess
 import sys
 import time
@@ -19,12 +20,25 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHROME = Path(r"D:\Programs\ChromeGo\TorBrowserPortable\chrome\Chrome-bin\chrome.exe")
 DEFAULT_PROFILE = Path(r"D:\Programs\ChromeGo\TorBrowserPortable\v2rayn\v2rayn2025\chrome-data")
 DEFAULT_PROXY = "socks5://127.0.0.1:10808"
+DEFAULT_YTDLP = Path(r"D:\日常软件\视频剪辑软件\yt-dlp.exe")
 DEFAULT_PROXY_BYPASS = "localhost;127.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*"
 PLAYGROUND_URL = "https://dashboard.bfl.ai/"
 HUMAN_PACE_MIN_SECONDS = 1.0
 HUMAN_PACE_MAX_SECONDS = 3.0
 UPLOAD_SETTLE_MIN_SECONDS = 8.0
 UPLOAD_SETTLE_MAX_SECONDS = 12.0
+SUBMIT_FAILURE_MARKERS = (
+    "system_error",
+    "service issue",
+    "bfl returned status",
+    "over capacity",
+    "temporarily shedding requests",
+    "generation failed",
+    "request failed",
+    "rate limited",
+    "sending requests too quickly",
+)
+SUBMIT_ACTIVE_MARKERS = ("queued", "generating", "cancel")
 
 
 def human_pause(page: Page, multiplier: float = 1.0) -> None:
@@ -145,8 +159,11 @@ def wait_until_queue_idle(page: Page, timeout_ms: int) -> None:
         generating = page.get_by_role("button").filter(has_text="Generating")
         cancel_visible = cancel.count() > 0 and cancel.first.is_visible()
         generating_visible = generating.count() > 0 and generating.first.is_visible()
-        if not cancel_visible and not generating_visible:
+        card_texts = page.locator("[data-entry-id], article, [role='article']").all_inner_texts()
+        active_card_visible = any(classify_task_text(text) == "active" for text in card_texts)
+        if not cancel_visible and not generating_visible and not active_card_visible:
             return
+        print("检测到现有排队/生成任务，仅等待，不 Reset、不点击 Generate")
         page.wait_for_timeout(5000)
     raise RuntimeError("Playground 仍在生成或排队，未执行 Reset，也未重复提交")
 
@@ -250,15 +267,16 @@ def set_parameter(page: Page, label: str, value: object) -> None:
     close_parameter_panel(page, label, button)
 
 
-def apply_request_parameters(page: Page, defaults: dict) -> None:
-    """按 BFL API 请求字段顺序同步 Playground 参数。"""
+def apply_request_parameters(page: Page, defaults: dict, *, include_duration: bool = True) -> None:
+    """同步 Playground 参数；媒体优先流程可把 Duration 留到最后单独设置。"""
     mapping = [
         ("Aspect ratio", defaults.get("aspect_ratio")),
-        ("Duration", defaults.get("duration")),
         ("Resolution", defaults.get("resolution")),
         ("Generate audio", defaults.get("generate_audio")),
         ("Draft", defaults.get("draft")),
     ]
+    if include_duration:
+        mapping.insert(1, ("Duration", defaults.get("duration")))
     for label, value in mapping:
         if value is not None:
             set_parameter(page, label, value)
@@ -329,136 +347,426 @@ def set_file_if_needed(page: Page, image: Path | None) -> None:
 
 def task_board_snapshot(page: Page) -> tuple[str, ...]:
     """采集右侧结果/队列卡片摘要，用于确认真实创建了新任务。"""
-    cards = page.locator("article, [role='article']").evaluate_all(
-        """els => els.map(el => (el.innerText || '').replace(/\\s+/g, ' ').trim())
-            .filter(text => /(?:JUST NOW|\\d+\\s*(?:S|M|H)\\s*AGO|\\d{1,2}:\\d{2})\\s*[\\s\\u00b7.]\\s*(?:(?:TYPICAL LATENCY:[^\\u00b7.]*)[\\u00b7.]\\s*)?\\d+\\s+VIDEO/i.test(text))"""
+    cards = page.locator("[data-entry-id]").evaluate_all(
+        """els => els.map(el => `id:${el.getAttribute('data-entry-id') || ''}`)
+            .filter(value => value !== 'id:')"""
     )
     if cards:
         return tuple(sorted(cards))
-    lines = page.locator("body").inner_text().splitlines()
+    # 页面窄布局可能没有 data-entry-id；去掉不断变化的时间文本再建立卡片指纹。
     return tuple(
-        sorted(
-            " ".join(line.split())
-            for line in lines
-            if "VIDEO" in line.upper() and (
-                "AGO" in line.upper()
-                or "JUST NOW" in line.upper()
-                or "TYPICAL LATENCY" in line.upper()
-            )
-        )
+        sorted(page.locator("article, [role='article']").evaluate_all(
+            """els => els.map(el => (el.innerText || '')
+                .replace(/\\s+/g, ' ').trim()
+                .replace(/(?:JUST NOW|\\d+\\s*(?:S|M|H)\\s*AGO|\\d{1,2}:\\d{2})/ig, '<time>'))
+                .filter(text => text && /(?:PROMPT|VIDEO|system_error|Service issue|TYPICAL LATENCY)/i.test(text))"""
+        ))
     )
 
 
-def wait_for_task_creation(page: Page, before: tuple[str, ...], settle_seconds: float) -> None:
-    """等待右侧任务队列出现新证据并稳定，不把按钮瞬态当作已提交。"""
+def classify_task_text(text: str) -> str:
+    """把任务卡文字归类为失败、活动、完成或未知，忽略控制台页面噪声。"""
+    normalized = " ".join(text.lower().split())
+    if any(marker in normalized for marker in SUBMIT_FAILURE_MARKERS):
+        return "failed"
+    if any(marker in normalized for marker in SUBMIT_ACTIVE_MARKERS):
+        return "active"
+    if "video" in normalized and ("download" in normalized or "latency" in normalized):
+        return "complete"
+    return "unknown"
+
+
+def prompt_task_records(page: Page, prompt: str) -> tuple[tuple[str, str, str], ...]:
+    """只读取与当前提示词开头匹配的右侧任务，避免历史任务干扰重试。"""
+    needle = " ".join(prompt.split())[:120].lower()
+    raw = page.locator("[data-entry-id], article, [role='article']").evaluate_all(
+        """(els, needle) => els.map((el, index) => {
+            const text = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+            const owner = el.closest('[data-entry-id]') || el;
+            const id = owner.getAttribute && owner.getAttribute('data-entry-id');
+            return {key: id ? `id:${id}` : `fallback:${index}:${text.slice(0, 240)}`, text};
+        }).filter(item => item.text.toLowerCase().includes(needle))""",
+        needle,
+    )
+    unique: dict[str, tuple[str, str, str]] = {}
+    for item in raw:
+        key = item["key"]
+        text = item["text"]
+        unique[key] = (key, classify_task_text(text), text)
+    return tuple(unique.values())
+
+
+def wait_for_task_creation(
+    page: Page,
+    before: tuple[str, ...],
+    before_record_states: dict[str, str],
+    prompt: str,
+    settle_seconds: float,
+    response_statuses: list[int],
+) -> tuple[str, str]:
+    """等待任务成功入队或明确失败；未知状态绝不转成可重试失败。"""
     deadline = time.monotonic() + 90
     evidence_at: float | None = None
     while time.monotonic() < deadline:
+        failed_http = next((status for status in response_statuses if status in {502, 503, 504}), None)
+        if failed_http is not None:
+            return "failed", f"/api/playground/generate 返回 HTTP {failed_http}"
+        records = prompt_task_records(page, prompt)
+        new_records = [record for record in records if record[0] not in before_record_states]
+        failed_record = next(
+            (
+                record for record in records
+                if record[1] == "failed" and before_record_states.get(record[0]) != "failed"
+            ),
+            None,
+        )
+        if failed_record is not None:
+            return "failed", failed_record[2][:300]
         board_changed = task_board_snapshot(page) != before
-        if board_changed:
+        # 队列整体变化可能来自其他历史任务；只有当前 Prompt 的新卡片才算本次创建成功。
+        created = bool(new_records)
+        if created:
             if evidence_at is None:
                 evidence_at = time.monotonic()
                 print("已检测到右侧任务队列变化，开始稳定观察")
             elif time.monotonic() - evidence_at >= settle_seconds:
                 print("任务队列已稳定，确认已提交")
-                return
+                return "submitted", "右侧任务卡已创建并稳定"
         else:
             evidence_at = None
+            if board_changed:
+                print("右侧队列有变化，但尚未匹配到当前 Prompt；继续观察，不判定成功")
         page.wait_for_timeout(500)
-    page.screenshot(path=str(PROJECT_ROOT / "work" / "task-creation-unconfirmed.png"), full_page=True)
-    raise RuntimeError("Generate 已点击，但 90 秒内未确认右侧任务队列创建；已保存截图且不会重复提交")
+    page.screenshot(path=str(PROJECT_ROOT / "work" / "submission-state-unknown.png"), full_page=True)
+    return "unknown", "90 秒内未确认右侧任务创建；已保存截图"
 
 
-def click_generate(page: Page, settle_seconds: float) -> None:
-    """点击 Generate，并在右侧任务区出现且稳定后才确认成功。"""
+def wait_for_generate_retry_ready(page: Page, prompt: str, timeout_seconds: float = 120) -> None:
+    """失败后等待按钮恢复，并确保当前提示词没有活动任务。"""
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        active = any(record[1] == "active" for record in prompt_task_records(page, prompt))
+        button = first_visible(page, ['button[aria-label="Generate"]'], timeout=800)
+        if not active and button is not None and button.is_enabled() and button.get_attribute("disabled") is None:
+            return
+        page.wait_for_timeout(1000)
+    raise RuntimeError("任务失败后 Generate 未在 120 秒内恢复，停止自动重试")
+
+
+def click_generate(
+    page: Page,
+    prompt: str,
+    settle_seconds: float,
+    max_retries: int,
+    retry_delay_min: float,
+    retry_delay_max: float,
+) -> None:
+    """点击 Generate；仅在 502/503/504 或当前任务卡明确失败时有界重试。"""
     # 当前 BFL DOM 的文字位于三层 span 内；实际点击目标必须向上解析到 button。
     # aria-label 是首选契约，精确文本 + 最近 button 是页面改版后的安全回退。
-    candidates = page.locator(
-        'button[aria-label="Generate"], button:has(span:text-is("Generate"))'
-    )
-    ranked: list[tuple[float, object, dict]] = []
-    for index in range(candidates.count()):
-        candidate = candidates.nth(index)
-        if not candidate.is_visible() or not candidate.is_enabled() or candidate.get_attribute("disabled") is not None:
-            continue
-        candidate_box = candidate.bounding_box()
-        if candidate_box is not None:
-            ranked.append((candidate_box["x"], candidate, candidate_box))
-    if not ranked:
-        raise RuntimeError("未找到 Generate 按钮")
-    _, button, selected_box = min(ranked, key=lambda item: item[0])
-    board_before = task_board_snapshot(page)
-    print(f"选择左侧 Generate：x={selected_box['x']:.1f}, y={selected_box['y']:.1f}, 候选数={len(ranked)}")
-    # 右侧历史视频预览层可能拦截鼠标命中，但按钮仍是可用的；强制命中目标按钮。
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
-        if button.is_enabled() and button.get_attribute("disabled") is None:
-            box = button.bounding_box()
-            if box is None:
-                raise RuntimeError("无法读取 Generate 按钮坐标")
-            click_x = box["x"] + box["width"] / 2
-            click_y = box["y"] + box["height"] / 2
-            # 动态找出当前坐标上真正拦截鼠标的元素，而不是依赖易变的 CSS 类名。
-            button.evaluate("""(target, {x, y}) => {
-                window.__bflPointerRestore = [];
-                window.__bflBlockers = [];
-                for (let round = 0; round < 20; round++) {
-                    const top = document.elementFromPoint(x, y);
-                    if (!top || top === target || target.contains(top)) break;
-                    window.__bflBlockers.push(`${top.tagName}.${String(top.className).slice(0, 160)}`);
-                    window.__bflPointerRestore.push([top, top.style.pointerEvents]);
-                    top.style.pointerEvents = 'none';
-                }
-            }""", {"x": click_x, "y": click_y})
-            human_pause(page)
-            try:
-                hit = button.evaluate("""(target, {x, y}) => {
-                    const top = document.elementFromPoint(x, y);
-                    return Boolean(top && (top === target || target.contains(top)));
+    for attempt in range(max_retries + 1):
+        candidates = page.locator('button[aria-label="Generate"], button:has(span:text-is("Generate"))')
+        ranked: list[tuple[float, object, dict]] = []
+        for index in range(candidates.count()):
+            candidate = candidates.nth(index)
+            if not candidate.is_visible() or not candidate.is_enabled() or candidate.get_attribute("disabled") is not None:
+                continue
+            candidate_box = candidate.bounding_box()
+            if candidate_box is not None:
+                ranked.append((candidate_box["x"], candidate, candidate_box))
+        if not ranked:
+            raise RuntimeError("未找到可用的 Generate 按钮；可能仍在生成或排队，未重复提交")
+        _, button, selected_box = min(ranked, key=lambda item: item[0])
+        board_before = task_board_snapshot(page)
+        prompt_records_before = {record[0]: record[1] for record in prompt_task_records(page, prompt)}
+        response_statuses: list[int] = []
+
+        def record_generate_response(response) -> None:
+            if "/api/playground/generate" in response.url:
+                response_statuses.append(response.status)
+
+        page.on("response", record_generate_response)
+        print(f"选择左侧 Generate：x={selected_box['x']:.1f}, y={selected_box['y']:.1f}, 尝试={attempt + 1}/{max_retries + 1}")
+        # 右侧历史视频预览层可能拦截鼠标命中，但按钮仍是可用的；强制命中目标按钮。
+        deadline = time.monotonic() + 30
+        clicked = False
+        while time.monotonic() < deadline:
+            if button.is_enabled() and button.get_attribute("disabled") is None:
+                box = button.bounding_box()
+                if box is None:
+                    raise RuntimeError("无法读取 Generate 按钮坐标")
+                click_x = box["x"] + box["width"] / 2
+                click_y = box["y"] + box["height"] / 2
+                # 动态找出当前坐标上真正拦截鼠标的元素，而不是依赖易变的 CSS 类名。
+                button.evaluate("""(target, {x, y}) => {
+                    window.__bflPointerRestore = [];
+                    window.__bflBlockers = [];
+                    for (let round = 0; round < 20; round++) {
+                        const top = document.elementFromPoint(x, y);
+                        if (!top || top === target || target.contains(top)) break;
+                        window.__bflBlockers.push(`${top.tagName}.${String(top.className).slice(0, 160)}`);
+                        window.__bflPointerRestore.push([top, top.style.pointerEvents]);
+                        top.style.pointerEvents = 'none';
+                    }
                 }""", {"x": click_x, "y": click_y})
-                if not hit:
-                    blockers = page.evaluate("window.__bflBlockers || []")
-                    print(f"Generate 坐标拦截元素：{blockers}")
-                    raise RuntimeError("清理覆盖层后 Generate 仍未成为鼠标命中目标")
-                page.mouse.click(click_x, click_y)
-            finally:
-                page.evaluate("""() => {
-                    for (const [el, value] of (window.__bflPointerRestore || [])) el.style.pointerEvents = value;
-                    delete window.__bflPointerRestore;
-                    delete window.__bflBlockers;
-                }""")
-            generating_deadline = time.monotonic() + 15
-            while time.monotonic() < generating_deadline:
-                generating = page.get_by_role("button").filter(has_text="Generating")
-                cancel = page.get_by_role("button", name="Cancel")
-                if (generating.count() > 0 and generating.first.is_visible()) or (cancel.count() > 0 and cancel.first.is_visible()):
-                    print("点击已被页面接收，等待右侧任务队列创建")
-                    wait_for_task_creation(page, board_before, settle_seconds)
-                    return
-                page.wait_for_timeout(500)
-            page.screenshot(path=str(PROJECT_ROOT / "work" / "submit-not-started.png"), full_page=True)
-            raise RuntimeError("Generate 已点击，但页面未出现新任务状态")
-        page.wait_for_timeout(500)
-    page.screenshot(path=str(PROJECT_ROOT / "work" / "generate-disabled.png"), full_page=True)
-    raise RuntimeError("Generate 仍为 disabled；未强制点击，已保存诊断截图")
+                human_pause(page)
+                try:
+                    hit = button.evaluate("""(target, {x, y}) => {
+                        const top = document.elementFromPoint(x, y);
+                        return Boolean(top && (top === target || target.contains(top)));
+                    }""", {"x": click_x, "y": click_y})
+                    if not hit:
+                        blockers = page.evaluate("window.__bflBlockers || []")
+                        print(f"Generate 坐标拦截元素：{blockers}")
+                        raise RuntimeError("清理覆盖层后 Generate 仍未成为鼠标命中目标")
+                    page.mouse.click(click_x, click_y)
+                    clicked = True
+                finally:
+                    page.evaluate("""() => {
+                        for (const [el, value] of (window.__bflPointerRestore || [])) el.style.pointerEvents = value;
+                        delete window.__bflPointerRestore;
+                        delete window.__bflBlockers;
+                    }""")
+                break
+            page.wait_for_timeout(500)
+        if not clicked:
+            page.remove_listener("response", record_generate_response)
+            page.screenshot(path=str(PROJECT_ROOT / "work" / "generate-disabled.png"), full_page=True)
+            raise RuntimeError("Generate 仍为 disabled；未强制点击，已保存诊断截图")
+
+        print("点击已被页面接收，等待右侧任务卡或明确失败响应")
+        outcome, reason = wait_for_task_creation(
+            page, board_before, prompt_records_before, prompt, settle_seconds, response_statuses
+        )
+        page.remove_listener("response", record_generate_response)
+        if outcome == "submitted":
+            return
+        if outcome == "unknown":
+            raise RuntimeError(f"提交状态不确定：{reason}；为避免重复任务，不自动重试")
+        page.screenshot(path=str(PROJECT_ROOT / "work" / f"submit-failed-attempt-{attempt + 1}.png"), full_page=True)
+        if attempt >= max_retries:
+            raise RuntimeError(f"提交明确失败且已达到重试上限：{reason}")
+        print(f"提交明确失败：{reason}")
+        rate_limited = "502" in reason or "rate limited" in reason.lower() or "too quickly" in reason.lower()
+        if rate_limited:
+            # 502 响应通常先于错误卡渲染；必须留在当前页面等待卡片，再按页面 Retry 契约恢复。
+            click_rate_limit_retry(page, timeout_seconds=30)
+            wait_main_generate_enabled(page)
+            delay = random.uniform(10.0, 20.0)
+            print(f"错误卡 Retry 已恢复表单；等待 {delay:.2f}s 后再点一次主 Generate")
+            page.wait_for_timeout(int(delay * 1000))
+        else:
+            wait_for_generate_retry_ready(page, prompt)
+            delay = random.uniform(retry_delay_min, retry_delay_max)
+            print(f"等待服务恢复：{delay:.2f}s；随后只重试一次当前提交")
+            page.wait_for_timeout(int(delay * 1000))
 
 
-def wait_and_download(page: Page, output: Path, timeout_ms: int) -> None:
-    """等待页面视频结果并下载 MP4。"""
-    deadline = time.monotonic() + timeout_ms / 1000
+def click_rate_limit_retry(page: Page, timeout_seconds: float = 20) -> None:
+    """点击当前 Rate limited 错误卡内的 Retry，让页面恢复请求表单状态。"""
+    deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        videos = page.locator("video")
-        if videos.count() > 0:
-            src = videos.last.get_attribute("src")
-            if src and src.startswith("http"):
-                output.parent.mkdir(parents=True, exist_ok=True)
-                import urllib.request
+        error_panel = page.locator("div.rounded-md.border.p-4").filter(has_text="Rate limited").filter(has_text="sending requests too quickly")
+        retry = error_panel.get_by_role("button", name="Retry", exact=True)
+        for index in range(retry.count()):
+            candidate = retry.nth(index)
+            if candidate.is_visible() and candidate.is_enabled():
+                candidate.scroll_into_view_if_needed()
+                human_pause(page)
+                candidate.click()
+                print("已点击 Rate limited 错误卡内 Retry，等待主 Generate 恢复")
+                return
+        page.wait_for_timeout(500)
+    raise RuntimeError("20 秒内未找到当前 Rate limited 卡片内可见 Retry；未点击主 Generate")
 
-                urllib.request.urlretrieve(src, output)
-                if output.exists() and output.stat().st_size > 0:
-                    return
+
+def wait_main_generate_enabled(page: Page, timeout_seconds: float = 60) -> None:
+    """等待 Retry 完成页面恢复，主 Generate 必须真实 enabled。"""
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        button = first_visible(page, ['button[aria-label="Generate"]'], timeout=800)
+        if button is not None and button.is_enabled() and button.get_attribute("disabled") is None:
+            return
+        page.wait_for_timeout(1000)
+    raise RuntimeError("点击错误卡 Retry 后主 Generate 未恢复 enabled；停止")
+
+
+def retry_rate_limited_task(page: Page, prompt: str, cooldown_min: float, cooldown_max: float) -> None:
+    """恢复已有 Rate limited 卡片，再按人工节奏点击一次主 Generate。"""
+    box = page.locator("textarea").first
+    if box.count() == 0 or box.input_value() != prompt:
+        raise RuntimeError("当前页面 Prompt 与目标镜头不一致，禁止点击失败卡片 Retry")
+    thumbnail = page.locator('img[alt="Input image"]').first
+    if thumbnail.count() == 0 or not (thumbnail.get_attribute("src") or "").startswith("https://cdn.bfl.ai/"):
+        raise RuntimeError("当前页面没有已稳定的 BFL Start frame，禁止点击失败卡片 Retry")
+    click_rate_limit_retry(page)
+    wait_main_generate_enabled(page)
+    delay = random.uniform(cooldown_min, cooldown_max)
+    print(f"主 Generate 已恢复；按人工节奏等待 {delay:.2f}s 后只点击一次")
+    page.wait_for_timeout(int(delay * 1000))
+    click_generate(page, prompt, 30.0, 0, cooldown_min, cooldown_max)
+
+
+def prompt_task_video_sources(page: Page, prompt: str) -> tuple[str, ...]:
+    """只提取当前 Prompt 对应任务卡内的视频地址，避免误下历史成片。"""
+    needle = " ".join(prompt.split())[:120].lower()
+    sources = page.locator("[data-entry-id], article, [role='article']").evaluate_all(
+        r"""(els, needle) => els.flatMap(el => {
+            const text = (el.innerText || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (!text.includes(needle)) return [];
+            const owner = el.closest('[data-entry-id]') || el;
+            return [...owner.querySelectorAll('video')]
+                .map(video => video.currentSrc || video.src || '')
+                .filter(src => /^https?:\/\//i.test(src));
+        })""",
+        needle,
+    )
+    return tuple(dict.fromkeys(sources))
+
+
+def validate_downloaded_video(video: Path, ffprobe: str) -> None:
+    """校验 MP4 容器头和可解码视频流，拒绝把错误页伪装成成片。"""
+    if not video.is_file() or video.stat().st_size < 1024:
+        raise RuntimeError("下载结果过小，不是有效视频")
+    header = video.read_bytes()[:32]
+    if b"ftyp" not in header:
+        raise RuntimeError("下载结果缺少 MP4 ftyp 容器头，可能是 HTML/错误响应")
+    probe = subprocess.run(
+        [ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,width,height", "-show_entries", "format=duration", "-of", "json", str(video)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if probe.returncode != 0:
+        raise RuntimeError(f"FFprobe 无法解析下载结果：{probe.stderr.strip()[:300]}")
+    payload = json.loads(probe.stdout or "{}")
+    if not payload.get("streams") or float(payload.get("format", {}).get("duration", 0)) <= 0:
+        raise RuntimeError("下载结果没有有效视频流或时长")
+
+
+def download_via_browser(page: Page, url: str, target: Path, timeout_ms: int) -> None:
+    """在已登录 Chrome 内 fetch 为 Blob，再触发原生下载，复用 Cookie 与 10808 代理。"""
+    with page.expect_download(timeout=timeout_ms) as download_info:
+        metadata = page.evaluate(
+            """async ({url, filename}) => {
+                const response = await fetch(url, {credentials: 'include', cache: 'no-store'});
+                if (!response.ok) throw new Error(`video fetch HTTP ${response.status}`);
+                const blob = await response.blob();
+                if (blob.size < 1024) throw new Error(`video blob too small: ${blob.size}`);
+                const objectUrl = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = objectUrl;
+                link.download = filename;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+                return {status: response.status, type: blob.type, size: blob.size};
+            }""",
+            {"url": url, "filename": target.name},
+        )
+    download = download_info.value
+    download.save_as(target)
+    print(f"浏览器会话下载完成：HTTP {metadata['status']}，{metadata['size']} bytes，{metadata['type'] or 'unknown type'}")
+
+
+def download_via_ytdlp(url: str, target: Path, proxy: str, timeout_ms: int, ytdlp: Path) -> None:
+    """浏览器 Blob 下载受限时，用 yt-dlp 经 SOCKS5H 代理下载准确的当前任务 URL。"""
+    executable = str(ytdlp) if ytdlp.is_file() else (shutil.which("yt-dlp.exe") or shutil.which("yt-dlp"))
+    if not executable:
+        raise RuntimeError("未找到 yt-dlp，无法执行代理下载回退")
+    proxy_url = proxy.replace("socks5://", "socks5h://", 1)
+    output_template = str(target) + ".%(ext)s"
+    result = subprocess.run(
+        [
+            executable,
+            "--no-playlist",
+            "--no-part",
+            "--retries", "3",
+            "--socket-timeout", str(max(30, min(180, timeout_ms // 1000))),
+            "--proxy", proxy_url,
+            "--output", output_template,
+            "--print", "after_move:filepath",
+            url,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"yt-dlp 代理下载失败：{(result.stderr or result.stdout).strip()[:300]}")
+    paths = [Path(line.strip()) for line in result.stdout.splitlines() if line.strip()]
+    actual = next((path for path in reversed(paths) if path.is_file()), None)
+    if actual is None:
+        candidates = sorted(target.parent.glob(target.name + ".*"), key=lambda path: path.stat().st_size, reverse=True)
+        actual = candidates[0] if candidates else None
+    if actual is None:
+        raise RuntimeError("yt-dlp 返回成功，但没有找到实际下载文件")
+    os.replace(actual, target)
+
+
+def generation_button_is_disabled(page: Page) -> bool:
+    """Generate 的原生 disabled 状态是当前渲染仍在进行的页面契约。"""
+    button = page.locator('button[aria-label="Generate"]').first
+    return button.count() > 0 and button.is_visible() and (
+        not button.is_enabled() or button.get_attribute("disabled") is not None
+    )
+
+
+def wait_and_download(
+    page: Page,
+    output: Path,
+    timeout_ms: int,
+    prompt: str,
+    proxy: str,
+    ffprobe: str,
+    ytdlp: Path,
+) -> None:
+    """等待当前 Prompt 的视频，代理下载到临时文件并通过容器校验后原子落盘。"""
+    deadline = time.monotonic() + timeout_ms / 1000
+    stable_source: str | None = None
+    stable_since: float | None = None
+    while time.monotonic() < deadline:
+        if generation_button_is_disabled(page):
+            stable_source = None
+            stable_since = None
+            print("Generate 仍为 disabled：当前任务正在生成，只等待，不下载、不重复提交")
+            page.wait_for_timeout(5000)
+            continue
+        sources = prompt_task_video_sources(page, prompt)
+        if sources:
+            if stable_source != sources[0]:
+                stable_source = sources[0]
+                stable_since = time.monotonic()
+                print("当前任务已结束，视频地址出现；继续等待地址稳定")
+                page.wait_for_timeout(3000)
+                continue
+            if stable_since is None or time.monotonic() - stable_since < 10:
+                page.wait_for_timeout(2000)
+                continue
+            output.parent.mkdir(parents=True, exist_ok=True)
+            partial = output.with_suffix(output.suffix + ".part")
+            partial.unlink(missing_ok=True)
+            errors: list[str] = []
+            try:
+                download_via_browser(page, sources[0], partial, timeout_ms)
+                validate_downloaded_video(partial, ffprobe)
+            except Exception as exc:
+                errors.append(f"浏览器下载：{exc}")
+                partial.unlink(missing_ok=True)
+                try:
+                    download_via_ytdlp(sources[0], partial, proxy, timeout_ms, ytdlp)
+                    validate_downloaded_video(partial, ffprobe)
+                except Exception as ytdlp_exc:
+                    errors.append(f"yt-dlp 回退：{ytdlp_exc}")
+                    partial.unlink(missing_ok=True)
+                    raise RuntimeError("；".join(errors)) from ytdlp_exc
+            os.replace(partial, output)
+            print(f"已自动下载并验证当前镜头：{output}")
+            return
         page.wait_for_timeout(5000)
-    raise RuntimeError("等待视频结果超时")
+    raise RuntimeError("等待当前 Prompt 对应的视频结果超时；未下载历史任务")
 
 
 def extract_last_frame(project: dict, shot_id: str, video: Path) -> Path:
@@ -485,22 +793,47 @@ def main() -> int:
     parser.add_argument("project", type=Path)
     parser.add_argument("--run", action="store_true", help="确认后自动点击 Generate")
     parser.add_argument("--submit-only", action="store_true", help="确认右侧任务队列后退出，不等待视频下载")
+    parser.add_argument("--download-only", action="store_true", help="不填表、不提交，只等待并下载 --shot-id 对应的既有结果")
+    parser.add_argument("--retry-rate-limited", action="store_true", help="只恢复当前 Rate limited 任务卡，然后等待下载；不 Reset、不重填、不点主 Generate")
+    parser.add_argument("--rate-limit-cooldown-min", type=float, default=10.0, help="点击错误卡 Retry 后、主 Generate 前的随机等待下限秒数")
+    parser.add_argument("--rate-limit-cooldown-max", type=float, default=20.0, help="点击错误卡 Retry 后、主 Generate 前的随机等待上限秒数")
     parser.add_argument("--shot-id", help="只运行指定镜头；用于断点续跑")
     parser.add_argument("--start-frame", type=Path, help="指定镜头的首帧文件；仅与 --shot-id 一起使用")
+    parser.add_argument("--output-video", type=Path, help="将当前单镜头成片保存到指定 MP4 路径")
     parser.add_argument("--submit-stabilize-seconds", type=float, default=30.0, help="确认右侧任务创建后继续观察的秒数，默认 30")
+    parser.add_argument("--max-submit-retries", type=int, default=1, help="仅在明确 502/503/504 或当前任务卡失败时重试，默认最多 1 次")
+    parser.add_argument("--retry-delay-min", type=float, default=20.0, help="明确失败后的随机退避下限秒数，默认 20")
+    parser.add_argument("--retry-delay-max", type=float, default=40.0, help="明确失败后的随机退避上限秒数，默认 40")
+    parser.add_argument("--pre-submit-cooldown-min", type=float, default=30.0, help="所有输入稳定后、点击 Generate 前的冷却下限秒数")
+    parser.add_argument("--pre-submit-cooldown-max", type=float, default=45.0, help="所有输入稳定后、点击 Generate 前的冷却上限秒数")
     parser.add_argument("--chrome", type=Path, default=DEFAULT_CHROME)
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE, help="必须使用 ChromeGo 已登录的 chrome-data 目录")
     parser.add_argument("--proxy", default=DEFAULT_PROXY)
+    parser.add_argument("--yt-dlp", type=Path, default=DEFAULT_YTDLP, help="yt-dlp 可执行文件路径，用于自动下载回退")
     parser.add_argument("--timeout-ms", type=int, default=1800000)
     parser.add_argument("--pace-min", type=float, default=1.0, help="每步随机等待下限秒数，默认 1.0")
     parser.add_argument("--pace-max", type=float, default=3.0, help="每步随机等待上限秒数，默认 3.0")
     parser.add_argument("--upload-settle-min", type=float, default=8.0, help="首帧 CDN 缩略图出现后，提交前额外稳定等待下限秒数")
     parser.add_argument("--upload-settle-max", type=float, default=12.0, help="首帧 CDN 缩略图出现后，提交前额外稳定等待上限秒数")
     args = parser.parse_args()
+    if args.download_only and (args.run or args.submit_only or args.retry_rate_limited):
+        raise SystemExit("--download-only 不能与 --run/--submit-only/--retry-rate-limited 同时使用")
+    if args.retry_rate_limited and (args.run or args.submit_only):
+        raise SystemExit("--retry-rate-limited 不能与 --run/--submit-only 同时使用")
+    if (args.download_only or args.retry_rate_limited) and not args.shot_id:
+        raise SystemExit("--download-only/--retry-rate-limited 必须指定 --shot-id")
+    if args.rate_limit_cooldown_min < 5 or args.rate_limit_cooldown_max > 60 or args.rate_limit_cooldown_min > args.rate_limit_cooldown_max:
+        raise SystemExit("Rate limited 节奏无效：要求 5 <= min <= max <= 60")
     if args.pace_min < 0.5 or args.pace_max > 10 or args.pace_min > args.pace_max:
         raise SystemExit("人工节奏范围无效：要求 0.5 <= pace-min <= pace-max <= 10")
     if args.submit_stabilize_seconds < 5 or args.submit_stabilize_seconds > 120:
         raise SystemExit("任务稳定观察时长无效：要求 5 <= submit-stabilize-seconds <= 120")
+    if args.max_submit_retries < 0 or args.max_submit_retries > 2:
+        raise SystemExit("提交重试上限无效：要求 0 <= max-submit-retries <= 2")
+    if args.retry_delay_min < 5 or args.retry_delay_max > 180 or args.retry_delay_min > args.retry_delay_max:
+        raise SystemExit("失败退避范围无效：要求 5 <= retry-delay-min <= retry-delay-max <= 180")
+    if args.pre_submit_cooldown_min < 10 or args.pre_submit_cooldown_max > 180 or args.pre_submit_cooldown_min > args.pre_submit_cooldown_max:
+        raise SystemExit("提交前冷却范围无效：要求 10 <= pre-submit-cooldown-min <= pre-submit-cooldown-max <= 180")
     if args.upload_settle_min < 5 or args.upload_settle_max > 60 or args.upload_settle_min > args.upload_settle_max:
         raise SystemExit("首帧上传稳定等待范围无效：要求 5 <= upload-settle-min <= upload-settle-max <= 60")
     global HUMAN_PACE_MIN_SECONDS, HUMAN_PACE_MAX_SECONDS, UPLOAD_SETTLE_MIN_SECONDS, UPLOAD_SETTLE_MAX_SECONDS
@@ -526,6 +859,8 @@ def main() -> int:
             raise SystemExit("续跑非首镜头必须提供 --start-frame")
     elif args.start_frame is not None:
         raise SystemExit("--start-frame 必须与 --shot-id 一起使用")
+    if args.output_video is not None and not args.shot_id:
+        raise SystemExit("--output-video 必须与 --shot-id 一起使用")
     if not args.chrome.is_file():
         raise SystemExit(f"Chrome 不存在：{args.chrome}")
     args.profile.mkdir(parents=True, exist_ok=True)
@@ -541,6 +876,29 @@ def main() -> int:
         )
         page = context.pages[0] if context.pages else context.new_page()
         ensure_playground(page)
+        if args.retry_rate_limited:
+            shot = shots[0]
+            shot_id = shot["id"]
+            prompt = resolve_prompt(project_path, shot)
+            video = args.output_video.resolve() if args.output_video else PROJECT_ROOT / project.get("output_dir", "generated") / "clips" / shot_id / f"{shot_id}.mp4"
+            retry_rate_limited_task(page, prompt, args.rate_limit_cooldown_min, args.rate_limit_cooldown_max)
+            wait_and_download(page, video, args.timeout_ms, prompt, args.proxy, str(project.get("ffprobe_path") or "ffprobe"), args.yt_dlp)
+            extract_last_frame(project, shot_id, video)
+            context.close()
+            return 0
+        if args.download_only:
+            shot = shots[0]
+            shot_id = shot["id"]
+            prompt = resolve_prompt(project_path, shot)
+            video = args.output_video.resolve() if args.output_video else PROJECT_ROOT / project.get("output_dir", "generated") / "clips" / shot_id / f"{shot_id}.mp4"
+            wait_and_download(page, video, args.timeout_ms, prompt, args.proxy, str(project.get("ffprobe_path") or "ffprobe"), args.yt_dlp)
+            extract_last_frame(project, shot_id, video)
+            context.close()
+            return 0
+        # 新任务前先让页面与账户请求窗口冷却，避免打开后立刻上传媒体触发服务端限流。
+        startup_cooldown = random.uniform(30.0, 45.0)
+        print(f"Playground 启动后冷却：{startup_cooldown:.2f}s；期间不 Reset、不上传")
+        page.wait_for_timeout(int(startup_cooldown * 1000))
         wait_until_queue_idle(page, args.timeout_ms)
         for index, shot in enumerate(shots):
             shot_id = shot["id"]
@@ -548,24 +906,51 @@ def main() -> int:
             print(f"镜头 {index + 1}/{len(shots)}：{shot_id}")
             reset_all_inputs(page)
             choose_model(page)
-            fill_prompt(page, prompt)
-            apply_request_parameters(page, project.get("defaults", {}))
-            report_request_parameters(page)
+            after_reset_cooldown = random.uniform(10.0, 20.0)
+            print(f"Reset 后冷却：{after_reset_cooldown:.2f}s；随后才上传首帧")
+            page.wait_for_timeout(int(after_reset_cooldown * 1000))
             needs_start_frame = args.start_frame is not None or (not args.shot_id and index > 0)
             if needs_start_frame:
                 if previous_frame is None:
                     raise SystemExit("缺少上一段末帧，停止自动化")
                 set_file_if_needed(page, previous_frame)
+            # BFL 页面容易在短时间连续同步大 Prompt、媒体和参数时返回 502；按人工顺序错峰写入。
+            fill_prompt(page, prompt)
+            defaults = project.get("defaults", {})
+            apply_request_parameters(page, defaults, include_duration=False)
+            duration = defaults.get("duration")
+            if duration is not None:
+                set_parameter(page, "Duration", duration)
+                human_pause(page)
+            report_request_parameters(page)
             if not args.run:
                 print("dry-run：已填入提示词但未点击 Generate；使用 --run 才会生成。")
                 continue
-            click_generate(page, args.submit_stabilize_seconds)
+            cooldown = random.uniform(args.pre_submit_cooldown_min, args.pre_submit_cooldown_max)
+            print(f"全部输入已稳定，提交前冷却：{cooldown:.2f}s")
+            page.wait_for_timeout(int(cooldown * 1000))
+            click_generate(
+                page,
+                prompt,
+                args.submit_stabilize_seconds,
+                args.max_submit_retries,
+                args.retry_delay_min,
+                args.retry_delay_max,
+            )
             if args.submit_only:
                 print("已提交当前镜头，浏览器将保留生成任务；不等待视频下载。")
                 context.close()
                 return 0
-            video = PROJECT_ROOT / project.get("output_dir", "generated") / "clips" / shot_id / f"{shot_id}.mp4"
-            wait_and_download(page, video, args.timeout_ms)
+            video = args.output_video.resolve() if args.output_video else PROJECT_ROOT / project.get("output_dir", "generated") / "clips" / shot_id / f"{shot_id}.mp4"
+            wait_and_download(
+                page,
+                video,
+                args.timeout_ms,
+                prompt,
+                args.proxy,
+                str(project.get("ffprobe_path") or "ffprobe"),
+                args.yt_dlp,
+            )
             previous_frame = extract_last_frame(project, shot_id, video)
         context.close()
     return 0

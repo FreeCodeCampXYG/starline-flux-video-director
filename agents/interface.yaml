@@ -21,7 +21,6 @@ compatibility:
   permissions:
     network: "BFL API only when explicitly executed"
     file_write: "project-local outputs"
-    secret: "BFL_API_KEY environment variable"
   degradation:
-    no_api_key: "validate, plan, and status remain available"
+    no_provider_credential: "validate, plan, and status remain available"
     no_ffprobe: "download and size checks remain available; container metadata validation is manual"

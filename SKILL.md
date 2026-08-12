@@ -3,7 +3,7 @@ name: starline-flux-video-director
 description: Safely direct, plan, generate, resume, and review multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback when API submission is unavailable. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, or consistent character/camera/audio across generated clips. Do not use for ordinary video editing or unbounded unattended rendering.
 metadata:
   author: "墨点星痕 (starline)"
-  version: "0.5.0"
+  version: "1.2.0"
 ---
 
 # Starline FLUX Video Director
@@ -19,6 +19,8 @@ metadata:
 - 首帧上传后不得立刻点击 Generate。BFL CDN 缩略图要连续保持同一地址，并额外随机等待 `8–12` 秒。
 - 稳定等待后，再同时确认缩略图、`Replace start frame` / `Remove start frame` 控件，以及 enabled 的 Generate 均仍存在；任一状态变化则重新观察。
 - 可用 `--upload-settle-min` / `--upload-settle-max` 调整稳定等待范围，最低不得少于 5 秒。
+- 页面输入采用错峰顺序：Reset → 模型 → 首帧上传并确认 CDN → Prompt → 非时长参数 → 最后设置 Duration → 冷却 `30–45` 秒 → Generate，避免短时间状态同步触发“发送请求太快”。
+- 打开 Playground 后先冷却 `30–45` 秒；Reset 后按人工节奏冷却 `10–20` 秒才上传首帧。页面加载、Reset 与媒体上传也属于服务端请求窗口，不得只在 Generate 前等待。
 
 ## Playground 提交确认（v0.4.0）
 
@@ -29,6 +31,22 @@ metadata:
 - `Cancel` 只能辅助判断页面正在处理，不能单独证明任务已经创建。
 - Generate 的可见文字嵌套在多层 `span` 中；定位时优先使用 `button[aria-label="Generate"]`，并以精确 `span` 文本向上解析最近的 `button` 作为回退，禁止直接点击文字 span。
 - Start frame 必须点击 `button[aria-label="Attach start frame"]` 并通过 file chooser 选择文件；只有 `Replace start frame`、`Remove start frame` 与 `img[alt="Input image"]` 同时出现，且缩略图来自 BFL CDN，才算上传成功。上传未验证时禁止点击 Generate。
+
+## Playground 明确失败与有界重试（v0.6.0）
+
+- 点击 Generate 后同时监听 `/api/playground/generate` 网络响应，并只检查与当前 Prompt 开头匹配的右侧任务卡。历史任务失败不得触发本次重试。
+- HTTP `502/503/504`，或当前任务卡新出现 `system_error`、`Service issue`、`BFL returned status`、`over capacity` 等明确失败文字，才允许重试。
+- React 418、preload、CSP、iframe 等控制台警告属于页面噪声，不是生成失败证据。
+- 失败后先确认当前任务没有 `QUEUED / Generating / Cancel` 活动态、Generate 已恢复 enabled，再随机退避 `20–40` 秒。默认最多重试一次，可用 `--max-submit-retries 0..2` 调整。
+- 右侧任务是否创建无法确认时，状态必须是 unknown：保存诊断截图并停止，禁止为了“碰碰运气”再次点击。
+- 若页面明确显示 `system_error / Rate limited / You're sending requests too quickly` 和错误卡内 `Retry`，保留现有首帧、Prompt、参数：先点错误卡 Retry，确认主 Generate 恢复 enabled，随机等待 `10–20` 秒，再点一次主 Generate。使用 `--retry-rate-limited --rate-limit-cooldown-min 10 --rate-limit-cooldown-max 20` 恢复；不得 Reset 或重新上传。
+
+## 自动下载与损坏防护
+
+- 只从当前 Prompt 对应的新任务卡提取视频 URL，禁止用页面最后一个 `<video>`，否则可能下载到历史成片。
+- 优先在已登录浏览器内下载；失败后使用 `yt-dlp` 经 `socks5h://127.0.0.1:10808` 下载同一准确 URL。
+- 始终先写 `.mp4.part`，检查 `ftyp` 容器头、FFprobe 视频流和正时长后再原子改名。HTML/错误页不得留下伪 `.mp4`。
+- 使用 `--output-video <绝对路径.mp4>` 指定成片位置；使用 `--download-only --shot-id <id>` 可恢复只下载而不重新提交。
 
 把一个叙事目标编排成连续、可恢复、可审查的 FLUX 3 多镜头项目。主路径使用 BFL API；当 API 因额度或访问条件不可用、但用户已登录的免费 Playground 可用时，可显式切换到受保护的浏览器回退模式。FFmpeg 末帧提取和本地状态管理由脚本完成。
 
@@ -47,8 +65,9 @@ python scripts/flux_video_loop.py plan examples/ai-learning-star.project.json
 
 6. 在免费 Playground 主路径中，由人把提示词粘贴到页面、上传首帧（后续为上一段末帧）、点击 Generate 并下载 MP4。Skill 不执行页面按钮。API 自动执行仅作为可选备用路径，只有用户明确授权真实生成后才执行：
 
+先由用户在操作系统环境变量界面配置 BFL 凭据，禁止在命令、项目或日志中出现凭据值。重新打开终端后运行：
+
 ```powershell
-$env:BFL_API_KEY = "<your-key>"
 python scripts/flux_video_loop.py run examples/ai-learning-star.project.json --execute --confirm-run FREE_PROMO_CONFIRMED
 ```
 
