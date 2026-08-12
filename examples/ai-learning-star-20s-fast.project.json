@@ -1,0 +1,69 @@
+{
+  "project": "ai-learning-star-20s-fast",
+  "endpoint": "https://api.bfl.ai/v1/flux-3-video",
+  "ffmpeg_path": "D:/日常软件/视频剪辑软件/ffmpeg.exe",
+  "ffprobe_path": "D:/日常软件/视频剪辑软件/ffprobe.exe",
+  "output_dir": "./generated/ai-learning-star-20s-fast",
+  "max_submissions": 6,
+  "defaults": {
+    "aspect_ratio": "auto",
+    "duration": 20,
+    "resolution": "hd",
+    "generate_audio": true,
+    "safety_tolerance": 2,
+    "draft": false
+  },
+  "continuity_bible": {
+    "character": "同一位约三十岁的中国男性独立开发者，短黑发，深炭灰衬衫，自然面部与双手",
+    "set": "同一间夜间现代家庭工作室，深靛蓝主光，画面左后方暖金桌灯",
+    "camera": "35mm 电影摄影，每段只有一个连续机位，但内部包含四至五个清晰动作节拍",
+    "palette": "深靛蓝、黑色、暖金，真实克制，不使用赛博朋克霓虹",
+    "editing": "每段生成20秒，成片选取最强7至12秒；前1秒必须发生事件，每3至5秒出现一次视觉变化"
+  },
+  "shots": [
+    {
+      "id": "01-situation-hook",
+      "star": "S",
+      "mode": "t2v",
+      "prompt_file": "../references/first-shot-20s-dense-prompt.md",
+      "prompt": "Long external director prompt: dense 20-second opening, answer-overload to judgment bottleneck, stable continuity frame."
+    },
+    {
+      "id": "02-task-map",
+      "star": "T",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt_file": "../references/second-shot-20s-dense-prompt.md",
+      "prompt": "Long external director prompt: supplied verified-card frame becomes a fast, physical, stable radial task map."
+    },
+    {
+      "id": "03-action-method-collaboration",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt_file": "../references/third-shot-20s-dense-prompt.md",
+      "prompt": "Long external director prompt: supplied task-map frame becomes four disciplined physical work lanes and one stable compact artifact."
+    },
+    {
+      "id": "04-action-4a-review",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the supplied compact artifact frame with the same developer, charcoal shirt, studio layout, camera relationship and indigo-gold lighting. One continuous 20-second quality-control sequence with five rhythmic beats. 0-2 seconds: the artifact enters a dark inspection field above the desk. 2-9 seconds: four warm-gold scanning rings strike in rapid succession at roughly 1.7-second intervals, each creating a distinct material pulse. 9-12 seconds: the second and third scans reveal two precise red defects and the artifact halts. 12-16 seconds: feedback lines reverse direction through the existing workflow, repair both defects visibly, and switch the red nodes to calm green. 16-18 seconds: the final scan crosses the artifact faster and produces one gold confirmation pulse. 18-20 seconds: the developer gives a subtle natural approval gesture as the camera completes a compact macro arc and stops firmly. Crisp acceleration and deceleration, realistic reflections, no slow drift, no readable text, no logo, no cut."
+    },
+    {
+      "id": "05-action-build-proof",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue immediately from the verified green artifact with the exact same developer, clothing, studio geometry and lighting. One continuous 20-second assembly-and-proof shot with five fast readable stages. 0-3 seconds: the artifact unfolds into modular dark-metal and translucent code blocks. 3-7 seconds: the blocks snap together into a core reusable workflow with satisfying mechanical precision. 7-11 seconds: a second warm-gold pulse adds a Windows-ready package layer; a third pulse adds a publishable module layer. 11-15 seconds: three polished blank artifact panels rise quickly into a triangular arrangement, visually suggesting a learning website, a reusable meta skill and a source-grounded study web, with no generated text. 15-18 seconds: each panel moves closer to camera in a left-center-right rhythm, creating stable planar surfaces for later replacement with real GitHub and webpage screenshots. 18-20 seconds: all three panels align into one wide evidence wall and the developer connects the final module. Medium-speed lateral tracking, purposeful mechanical energy, no slow reveal, no fake UI, no logos, no cut."
+    },
+    {
+      "id": "06-result-system",
+      "star": "R",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue directly from the supplied wide evidence-wall frame, preserving the exact same developer, charcoal shirt, studio layout, desk lamp direction and indigo-gold palette. One continuous 20-second ending with momentum and four major transformations. 0-3 seconds: a warm-gold signal races left-to-right through the three evidence panels in three sharp beats. 3-8 seconds: the camera pulls back decisively as the panels burst outward into a structured constellation of many small abstract learning-page thumbnails and three larger open-source project nodes. 8-13 seconds: gold pathways connect the three nodes, then continue growing beyond the frame in visible successive branches. 13-16 seconds: the developer calmly closes one plain notebook while the network continues operating independently behind him. 16-18 seconds: one final pulse travels through the full system toward the horizon. 18-20 seconds: settle into a powerful wide composition with the developer on the left third and clean negative space on the right for the final title and GitHub attribution. Earned warm finish, no fade to black, no generated words, no logo, no slow empty hold."
+    }
+  ]
+}

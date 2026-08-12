@@ -1,0 +1,186 @@
+{
+  "ok": true,
+  "threshold": 0.34,
+  "description_concepts": [
+    "continuity",
+    "flux_video",
+    "orchestration"
+  ],
+  "missing_description_concepts": [],
+  "summary": {
+    "total": 13,
+    "passed": 13,
+    "false_positive": 0,
+    "false_negative": 0,
+    "pass_rate": 1.0
+  },
+  "failures": [],
+  "results": {
+    "should_trigger": [
+      {
+        "prompt": "把这份 STAR 复盘做成连续的 FLUX 3 六镜头视频",
+        "family": "star_film",
+        "expected_trigger": true,
+        "predicted_trigger": true,
+        "passed": true,
+        "score": 1.0,
+        "matched_concepts": [
+          "continuity",
+          "flux_video",
+          "orchestration"
+        ],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "用首尾帧循环调用 BFL API，上一段尾帧作为下一段首帧",
+        "family": "shared_keyframe_chain",
+        "expected_trigger": true,
+        "predicted_trigger": true,
+        "passed": true,
+        "score": 1.0,
+        "matched_concepts": [
+          "continuity",
+          "flux_video",
+          "orchestration"
+        ],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "帮我做一个 FLUX 3 视频项目，支持中断后继续生成",
+        "family": "resume",
+        "expected_trigger": true,
+        "predicted_trigger": true,
+        "passed": true,
+        "score": 1.0,
+        "matched_concepts": [
+          "continuity",
+          "flux_video",
+          "orchestration"
+        ],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "Use FLUX 3 i2v keyframes to render a continuous six-shot documentary.",
+        "family": "en_keyframes",
+        "expected_trigger": true,
+        "predicted_trigger": true,
+        "passed": true,
+        "score": 0.667,
+        "matched_concepts": [
+          "continuity",
+          "flux_video"
+        ],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "检查这套 flux-3-video 分镜参数和连续性，但先不要产生真实任务",
+        "family": "audit_only",
+        "expected_trigger": true,
+        "predicted_trigger": true,
+        "passed": true,
+        "score": 1.0,
+        "matched_concepts": [
+          "continuity",
+          "flux_video",
+          "orchestration"
+        ],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "七张边界图生成六段 20 秒 FHD 视频，保持同一人物",
+        "family": "fhd_chain",
+        "expected_trigger": true,
+        "predicted_trigger": true,
+        "passed": true,
+        "score": 0.667,
+        "matched_concepts": [
+          "continuity",
+          "orchestration"
+        ],
+        "negative_pattern": null
+      }
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "用 FLUX 生成一张公众号封面",
+        "family": "image_only",
+        "expected_trigger": false,
+        "predicted_trigger": false,
+        "passed": true,
+        "score": 0.0,
+        "matched_concepts": [],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "把现有六段视频在剪映里加字幕",
+        "family": "editing_only",
+        "expected_trigger": false,
+        "predicted_trigger": false,
+        "passed": true,
+        "score": 0.333,
+        "matched_concepts": [
+          "orchestration"
+        ],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "解释一下这条 curl 是什么意思",
+        "family": "explain_only",
+        "expected_trigger": false,
+        "predicted_trigger": false,
+        "passed": true,
+        "score": 0.0,
+        "matched_concepts": [],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "给我写一个电影故事，不需要生成视频",
+        "family": "writing_only",
+        "expected_trigger": false,
+        "predicted_trigger": false,
+        "passed": true,
+        "score": 0.0,
+        "matched_concepts": [],
+        "negative_pattern": null
+      }
+    ],
+    "near_neighbor": [
+      {
+        "prompt": "给一个独立的 FLUX 3 单镜头写提示词",
+        "family": "single_shot_prompt",
+        "expected_trigger": false,
+        "predicted_trigger": false,
+        "passed": true,
+        "score": 0.333,
+        "matched_concepts": [
+          "flux_video"
+        ],
+        "negative_pattern": "单镜头"
+      },
+      {
+        "prompt": "用其他视频平台批量生成互不相关的广告片",
+        "family": "other_provider_batch",
+        "expected_trigger": false,
+        "predicted_trigger": false,
+        "passed": true,
+        "score": 0.333,
+        "matched_concepts": [
+          "orchestration"
+        ],
+        "negative_pattern": null
+      },
+      {
+        "prompt": "从一段成片继续生成下一段，但不要首尾帧",
+        "family": "v2v_only",
+        "expected_trigger": false,
+        "predicted_trigger": false,
+        "passed": true,
+        "score": 0.333,
+        "matched_concepts": [
+          "continuity"
+        ],
+        "negative_pattern": null
+      }
+    ]
+  }
+}

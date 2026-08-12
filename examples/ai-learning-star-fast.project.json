@@ -1,0 +1,87 @@
+{
+  "project": "ai-learning-star-film-fast",
+  "endpoint": "https://api.bfl.ai/v1/flux-3-video",
+  "ffmpeg_path": "D:/日常软件/视频剪辑软件/ffmpeg.exe",
+  "ffprobe_path": "D:/日常软件/视频剪辑软件/ffprobe.exe",
+  "output_dir": "./generated/ai-learning-star-film-fast",
+  "max_submissions": 9,
+  "defaults": {
+    "aspect_ratio": "auto",
+    "duration": 10,
+    "resolution": "hd",
+    "generate_audio": true,
+    "safety_tolerance": 2,
+    "draft": false
+  },
+  "continuity_bible": {
+    "character": "同一位约三十岁的中国男性独立开发者，短黑发，深炭灰衬衫，自然面部与双手",
+    "set": "同一间夜间现代家庭工作室，深靛蓝环境，暖金桌灯位于画面左后方",
+    "camera": "35mm 电影镜头；动作段使用短促推进、横移、弧移或拉远，每镜只使用一种主要运动",
+    "palette": "深靛蓝、黑色、暖金，不使用夸张赛博朋克霓虹",
+    "tempo": "每镜 10 秒，0–2 秒立即触发，2–8 秒完成唯一主事件，8–10 秒硬停止形成切点"
+  },
+  "shots": [
+    {
+      "id": "01-hook-question",
+      "star": "S",
+      "mode": "t2v",
+      "prompt": "A single continuous 10-second cinematic technology-documentary shot, designed for a sharp four-second opening select. The same Chinese male independent developer, early thirties, short black hair, plain dark charcoal shirt, sits in the same night home studio, deep-indigo monitor light and one warm-gold desk lamp behind camera-left. 0-2 seconds: start already inside a dense forward-moving stream of translucent abstract answer cards rushing past camera toward him, immediate visual tension, no slow establishing pause. 2-7 seconds: the camera drives forward through the card stream at a controlled energetic pace; the developer raises his eyes and one clean warm-gold question-shaped light snaps into focus while every surrounding card defocuses. 7-10 seconds: hold the question light and his focused eyes for a clean cut point. Premium realistic 35mm cinematography, strong foreground parallax, precise motion, no cut, no readable text, no logo, no dialogue."
+    },
+    {
+      "id": "02-situation-bottleneck",
+      "star": "S",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the supplied opening frame with the exact same developer, clothing, camera axis, studio geometry and lighting. A continuous 10-second shot with immediate action. 0-2 seconds: the warm-gold question light remains centered as answer cards rapidly multiply behind it in three clear waves. 2-7 seconds: the waves compress into a visible bottleneck above the desk; most cards stop abruptly while one verified-looking gold card passes through, making the contrast between abundance and judgment instantly readable. Use a brisk six-inch lateral camera move with layered parallax, not a slow push-in. 7-10 seconds: the bottleneck freezes into a strong graphic composition ready for a match cut. Realistic physics, restrained indigo and gold, no text, no cut, no chaotic shake."
+    },
+    {
+      "id": "03-task-map",
+      "star": "T",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Match-cut from the supplied bottleneck into a top-down three-quarter desk view in the same studio. One continuous 10-second cause-and-effect shot. 0-2 seconds: abstract slide pages, transcript sheets, video timeline tiles, note cards and code fragments land rapidly across the desk in an organized burst, all without readable text. 2-7 seconds: the developer sweeps both natural hands inward once; the fragments accelerate along visible paths and lock into a clean radial task map, each piece clicking into one exact place. 7-10 seconds: a warm-gold route illuminates from the center outward and stops on three major branches. Energetic overhead camera drift, crisp object choreography, tactile paper and interface motion, no random floating, no cut."
+    },
+    {
+      "id": "04-action-direction",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the completed radial map. A continuous 10-second visual transformation with decisive timing. 0-2 seconds: the developer taps the center node once. 2-6 seconds: three concentric warm-gold rings expand quickly from that tap, then rotate into three clearly separated planning layers with strong visual hierarchy. 6-8 seconds: dozens of weak branches retract and disappear; only one coherent route remains illuminated. 8-10 seconds: the camera performs a short confident arc and settles with the developer aligned behind the chosen route. Same person and studio, premium documentary realism blended with elegant motion graphics, no labels, no readable words, no cut."
+    },
+    {
+      "id": "05-action-parallel",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the single illuminated route. One continuous 10-second coordinated action shot. 0-2 seconds: the developer makes one concise conductor-like hand gesture. 2-7 seconds: four distinct abstract light agents split from the central route and execute in parallel across four spatial lanes: gathering source cards, structuring them, checking them, and packaging an artifact; show simultaneous purposeful motion, not random particles. The camera tracks sideways at a medium pace so each lane crosses frame in sequence while all remain connected to the human director. 7-10 seconds: the four lanes converge into one compact artifact on the desk. Precise choreography, faster editorial energy, same identity and lighting, no readable text, no teleportation, no cut."
+    },
+    {
+      "id": "06-action-4a",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the assembled artifact. A continuous 10-second verification shot with four fast readable beats. 0-1.5 seconds: the artifact enters a dark inspection field. 1.5-6 seconds: four warm-gold scanning rings strike in rapid sequence at roughly one-second intervals; the second and third scans reveal two precise red defects. 6-8 seconds: feedback lines reverse direction, repair both defects, and the red nodes switch to calm green. 8-10 seconds: the final ring completes and the artifact receives one restrained gold confirmation pulse. Use a compact macro orbit with crisp rhythmic acceleration and a firm stop, realistic reflections, no slow drifting, no text, no cut."
+    },
+    {
+      "id": "07-action-skill",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue directly from the verified artifact in the same studio. One continuous 10-second assembly shot. 0-2 seconds: the artifact unfolds into modular dark-metal and translucent code blocks. 2-7 seconds: the blocks snap together in three satisfying stages—core workflow, Windows-ready package, publishable module—each stage triggered by one warm-gold pulse; then three polished artifact cards rise quickly into a triangular arrangement, suggesting a learning website, a reusable meta skill and a source-grounded study web without any readable text. 7-10 seconds: the developer connects the final module and the whole toolkit activates. Medium-speed lateral tracking, purposeful mechanical energy, no slow reveal, no fake UI, no logo, no cut."
+    },
+    {
+      "id": "08-proof-panels",
+      "star": "A",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue in the same studio and create a continuous 10-second cinematic proof-montage background designed to receive real GitHub and webpage screenshots in post. 0-2 seconds: three empty elegant glass panels snap open in foreground, one left, one center, one right, while the developer remains visible behind them. 2-7 seconds: a warm-gold signal travels left-to-right through all three panels in three distinct beats, each panel briefly moving closer to camera to create clear replacement surfaces for post-production overlays. 7-10 seconds: the panels align into one wide evidence wall and the camera performs a short pullback. Clean blank interfaces only, stable planar surfaces, strong screen-replacement geometry, no generated text, no logos, same indigo-gold lighting, no cut."
+    },
+    {
+      "id": "09-result-system",
+      "star": "R",
+      "mode": "i2v",
+      "keyframes": "auto_previous_last_frame",
+      "prompt": "Continue from the wide three-panel evidence wall. A continuous 10-second ending with momentum, not a slow fade. 0-3 seconds: the camera pulls back decisively as the three panels burst outward into a structured constellation of many small learning-page thumbnails and three larger open-source project nodes, all connected by warm-gold paths. 3-7 seconds: the network keeps expanding beyond frame while the developer calmly closes one plain notebook, showing that the system continues after the human action stops. 7-10 seconds: settle into a powerful wide composition with the developer on the left third, the living network behind him, and clean negative space on the right for the final title and GitHub attribution. Earned warm finish, deep indigo shadows, sunrise-gold highlight, no generated words, no logo, no fade to black."
+    }
+  ]
+}

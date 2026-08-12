@@ -1,0 +1,110 @@
+{
+  "schema_version": "2.0.0-starline-lite",
+  "generated_at": "2026-08-12",
+  "package": {
+    "name": "starline-flux-video-director",
+    "version": "0.4.0",
+    "owner": "墨点星痕 (starline)",
+    "maturity_tier": "governed",
+    "lifecycle_stage": null,
+    "upstream_inspiration": null,
+    "upstream_sync": {}
+  },
+  "intent": {
+    "description": "Safely direct, plan, generate, resume, and review multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback when API submission is unavailable. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, or consistent character/camera/audio across generated clips. Do not use for ordinary video editing or unbounded unattended rendering.",
+    "job_to_be_done": "Safely direct, plan, generate, resume, and review multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback when API submission is unavailable. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, or consistent character/camera/audio across generated clips. Do not use for ordinary video editing or unbounded unattended rendering.",
+    "target_users": [
+      "Starline operator"
+    ],
+    "inputs": [],
+    "outputs": [],
+    "exclusions": [],
+    "starline_defaults": {},
+    "naming": {
+      "default_prefix": "starline-",
+      "preserve_existing_name_on_update": true
+    }
+  },
+  "triggers": {
+    "should_trigger": [
+      "把这份 STAR 复盘做成连续的 FLUX 3 六镜头视频",
+      "用首尾帧循环调用 BFL API，上一段尾帧作为下一段首帧",
+      "帮我做一个 FLUX 3 视频项目，支持中断后继续生成",
+      "Use FLUX 3 i2v keyframes to render a continuous six-shot documentary.",
+      "检查这套 flux-3-video 分镜参数和连续性，但先不要产生真实任务",
+      "七张边界图生成六段 20 秒 FHD 视频，保持同一人物"
+    ],
+    "should_not_trigger": [
+      "用 FLUX 生成一张公众号封面",
+      "把现有六段视频在剪映里加字幕",
+      "解释一下这条 curl 是什么意思",
+      "给我写一个电影故事，不需要生成视频"
+    ],
+    "near_neighbor": [
+      "给一个独立的 FLUX 3 单镜头写提示词",
+      "用其他视频平台批量生成互不相关的广告片",
+      "从一段成片继续生成下一段，但不要首尾帧"
+    ]
+  },
+  "workflow": {
+    "router_rules": [],
+    "compact_workflow": [],
+    "gate_ladder": [],
+    "output_contract": []
+  },
+  "resources": {
+    "references": [
+      "references\\directing-system.md",
+      "references\\first-shot-20s-dense-prompt.md",
+      "references\\project-schema.md",
+      "references\\review-scorecard.md",
+      "references\\second-shot-20s-dense-prompt.md"
+    ],
+    "scripts": [
+      "scripts\\flux_video_loop.py",
+      "scripts\\playground_loop.py"
+    ],
+    "evals": [
+      "evals\\trigger_cases.json"
+    ],
+    "reports": [
+      "reports\\creation-handoff.md",
+      "reports\\prior-art-research.md",
+      "reports\\skill-ir.json",
+      "reports\\trigger-eval.json",
+      "reports\\trust-boundary.md",
+      "reports\\verification-summary.md"
+    ]
+  },
+  "portability": {
+    "canonical_format": "agent-skills",
+    "adapter_targets": [
+      "openai",
+      "claude",
+      "generic",
+      "agent-skills-compatible"
+    ],
+    "activation": {},
+    "execution": {
+      "shell": "powershell-or-bash",
+      "runtime": "python>=3.10"
+    },
+    "trust": {},
+    "permissions": {
+      "network": "BFL API only when explicitly executed",
+      "file_write": "project-local outputs",
+      "secret": "BFL_API_KEY environment variable"
+    },
+    "degradation": {
+      "no_api_key": "validate, plan, and status remain available",
+      "no_ffprobe": "download and size checks remain available; container metadata validation is manual"
+    }
+  },
+  "gates": {},
+  "evidence_boundary": {
+    "generated_reports_are_evidence": true,
+    "planned_work_is_evidence": false,
+    "missing_external_or_human_evidence_label": "missing evidence",
+    "public_claim_policy": "claim only what local validation, install proof, human review, or provider-backed evidence actually supports"
+  }
+}
