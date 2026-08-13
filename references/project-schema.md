@@ -7,6 +7,15 @@
   "project": "short-name",
   "endpoint": "https://api.bfl.ai/v1/flux-3-video",
   "output_dir": "./generated/project-name",
+  "delivery": {
+    "target_root": "D:/data/AI资料",
+    "date": "20260812",
+    "folder": "AI领导力-群星之舵",
+    "cover": "./AI领导力-群星之舵-横版封面.png",
+    "shot_titles": {
+      "01-situation": "S危机-决策瓶颈"
+    }
+  },
   "max_submissions": 6,
   "defaults": {
     "aspect_ratio": "16:9",
@@ -25,6 +34,8 @@
 - `duration`：整数 5–20 或 `"auto"`。
 - `aspect_ratio`：`auto / 21:9 / 2:1 / 16:9 / 4:3 / 1:1 / 3:4 / 9:16`。
 - `resolution`：`hd / fhd`。
+- `delivery` 只控制本地剪辑交付包，不参与 BFL 请求。`target_root` 可省略；Windows 默认 `D:/data/AI资料`，其他平台必须显式配置。`date` 必须是 `YYYYMMDD`；`folder` 是项目子目录；`cover` 相对项目 JSON 解析；`shot_titles` 按镜头 ID 配置最终中文文件名。
+- 使用 `python scripts/package_delivery.py project.json` 预览，确认后追加 `--execute`。脚本按 `shots` 数组顺序编号，复制并做 SHA-256 校验，不移动原始视频。
 
 ## 镜头
 

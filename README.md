@@ -26,6 +26,7 @@ npx skills add FreeCodeCampXYG/starline-flux-video-director --skill starline-flu
 - 浏览器下载失败时使用 `yt-dlp` 经代理回退，并用 MP4 容器头和 FFprobe 验证后原子落盘。
 - 默认仅预览；双重付费确认和最大提交数防止失控循环。
 - 提供“AI 学习 → Skill → GitHub 开源成果”的 60 秒 STAR 示例。
+- 把审片通过的视频和封面复制到统一的日期/项目交付目录，自动编号并校验完整性。
 
 ## Installation｜安装与快速开始
 
@@ -168,6 +169,22 @@ project.json
 requests/
 clips/
 ```
+
+## 整理到剪辑交付目录
+
+Windows 默认交付到 `D:\data\AI资料\YYYYMMDD\项目名\`。先预览，不写文件：
+
+```powershell
+python scripts/package_delivery.py project.json --delivery-date 20260812 --cover path\to\cover.png
+```
+
+确认镜头顺序与中文命名后执行：
+
+```powershell
+python scripts/package_delivery.py project.json --delivery-date 20260812 --cover path\to\cover.png --execute
+```
+
+正式镜头按项目 JSON 的 `shots` 顺序生成 `01…NN`，封面使用 `00-封面`，通过 `--test-clip` 加入的测试片使用 `99-测试片`。脚本只复制源文件，并以 SHA-256 校验副本；同名异内容默认拒绝覆盖。其他平台使用 `--target-root` 或 `STARLINE_VIDEO_DELIVERY_ROOT` 指定根目录。
 
 ## 代理
 

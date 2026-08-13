@@ -1,9 +1,9 @@
 ---
 name: starline-flux-video-director
-description: Safely direct, plan, generate, resume, and review multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback when API submission is unavailable. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, or consistent character/camera/audio across generated clips. Do not use for ordinary video editing or unbounded unattended rendering.
+description: Safely direct, plan, generate, resume, review, and package multi-shot FLUX 3 videos through shared start/end keyframes, the BFL API, or a guarded BFL Playground browser fallback. Use when the user wants 连续视频, 首尾帧连续生成, 多镜头循环生成, STAR 视频, FLUX 3 Video API, API不可用转网页, Playground回退, i2v keyframe chaining, storyboard-to-video, 断点续跑, 视频整理打包, 规定路径交付, or consistent character/camera/audio across clips. Do not use for ordinary video editing or unbounded unattended rendering.
 metadata:
   author: "墨点星痕 (starline)"
-  version: "1.2.2"
+  version: "1.2.9"
 ---
 
 # Starline FLUX Video Director
@@ -29,13 +29,15 @@ metadata:
 - 右侧任务变化后默认继续稳定观察 30 秒，才允许 `--submit-only` 退出；可通过 `--submit-stabilize-seconds` 调整为 5–120 秒。
 - 90 秒内右侧任务区没有变化时保存诊断截图并报错；不重复点击 Generate。
 - `Cancel` 只能辅助判断页面正在处理，不能单独证明任务已经创建。
-- Generate 的可见文字嵌套在多层 `span` 中；定位时优先使用 `button[aria-label="Generate"]`，并以精确 `span` 文本向上解析最近的 `button` 作为回退，禁止直接点击文字 span。
+- Generate 的可见文字嵌套在多层 `span` 中；定位时优先使用 `button[aria-label="Generate"]`，只有 `aria-busy="false"`、无原生 `disabled` 且 Playwright 判定 enabled 时才允许点击。只有页面完全缺少该 `aria-label` 时，才以精确 `span` 文本向上解析最近的 `button` 作为回退；禁止直接点击文字 span。
 - Start frame 必须点击 `button[aria-label="Attach start frame"]` 并通过 file chooser 选择文件；只有 `Replace start frame`、`Remove start frame` 与 `img[alt="Input image"]` 同时出现，且缩略图来自 BFL CDN，才算上传成功。上传未验证时禁止点击 Generate。
+- 结果卡片的 `button[aria-label="Use in FLUX 3 Video"]` 是站内图片复用快捷入口，可用于把BFL已生成图片送入视频表单；它不等同于左侧 Start frame 已上传。只有明确锁定当前图片结果卡、点击后再次通过上述三个 Start frame 控件与 CDN 缩略图验证，才能继续提交。FFmpeg 提取的本地末帧仍走 `Attach start frame` 文件选择器，不得误点历史结果卡。
+- React 可能在上传稳定等待期间重绘媒体芯片；二次验证必须重新查询 `Replace/Remove/img`，不得继续读取等待前的旧元素句柄。元素短暂消失时回到观察循环，不能报已上传或点击 Generate。
 
 ## Playground 明确失败与有界重试（v0.6.0）
 
 - 点击 Generate 后同时监听 `/api/playground/generate` 网络响应，并只检查与当前 Prompt 开头匹配的右侧任务卡。历史任务失败不得触发本次重试。
-- HTTP `502/503/504`，或当前任务卡新出现 `system_error`、`Service issue`、`BFL returned status`、`over capacity` 等明确失败文字，才允许重试。
+- HTTP `502/503/504`，或当前任务卡新出现 `system_error`、`Service issue`、`BFL returned status`、`over capacity` 等明确失败文字，才允许重试。普通 `502/503/504` 不等同 Rate limited：没有 Rate limited 错误卡时不得寻找或点击 Retry，而是等待主 Generate 恢复后按 `20–40` 秒退避一次。
 - React 418、preload、CSP、iframe 等控制台警告属于页面噪声，不是生成失败证据。
 - 失败后先确认当前任务没有 `QUEUED / Generating / Cancel` 活动态、Generate 已恢复 enabled，再随机退避 `20–40` 秒。默认最多重试一次，可用 `--max-submit-retries 0..2` 调整。
 - 右侧任务是否创建无法确认时，状态必须是 unknown：保存诊断截图并停止，禁止为了“碰碰运气”再次点击。
@@ -47,6 +49,8 @@ metadata:
 - 优先在已登录浏览器内下载；失败后使用 `yt-dlp` 经 `socks5h://127.0.0.1:10808` 下载同一准确 URL。
 - 始终先写 `.mp4.part`，检查 `ftyp` 容器头、FFprobe 视频流和正时长后再原子改名。HTML/错误页不得留下伪 `.mp4`。
 - 使用 `--output-video <绝对路径.mp4>` 指定成片位置；使用 `--download-only --shot-id <id>` 可恢复只下载而不重新提交。
+- `--download-only` 只匹配现有任务卡并下载，不执行表单、Reset、媒体上传或 Generate，因此非首镜头无需再传 `--start-frame`；正常生成非首镜头仍必须提供上一段末帧。
+- BFL Playground 当前页面即使出现多个同 Prompt 提交记录，也可能只有一个任务最终成功并暴露视频地址；用户只要求成片时，优先使用普通 `--download-only` 下载唯一成功结果，不等待失败记录产生第二条地址。只有用户明确确认页面存在多个已完成且可播放的视频时，才使用 `--download-all-matches`。
 
 ## yt-dlp 开源获取规则
 
@@ -108,6 +112,19 @@ python scripts/flux_video_loop.py run examples/ai-learning-star.project.json --e
 - 共享帧必须使用同一文件字节；不得为相邻镜头重新生成“看起来相同”的边界帧。
 - 两次结构相似的失败后停止自动重试，回到镜头设计；不要继续堆形容词或烧额度。
 
+## 成片素材交付打包
+
+- 生成与人工审片完成后，运行 `scripts/package_delivery.py`，不要让 `clips/<shot-id>/` 直接充当剪辑交付目录。
+- Windows 规定根目录默认为 `D:\data\AI资料`，交付结构固定为 `根目录\YYYYMMDD\项目名\`；其他平台必须显式传 `--target-root`。命令参数优先于 `project.json` 的 `delivery.target_root`，后者优先于 `STARLINE_VIDEO_DELIVERY_ROOT`。
+- 文件顺序固定：封面 `00-封面-项目名.png`；正式镜头按项目 `shots` 顺序命名为 `01-标题.mp4` 至 `NN-标题.mp4`；额外测试片为 `99-测试片-原名.mp4`。不要用文件修改时间推断叙事顺序。
+- 默认只预览。确认目录与命名后追加 `--execute`；始终复制而非移动源文件。每个副本必须通过 SHA-256 校验后原子落盘，同名同内容幂等跳过，同名异内容默认阻断，只有用户明确授权才使用 `--overwrite`。
+- 封面与镜头中文名写入项目 JSON 的 `delivery`：`date`、`folder`、`cover`、`shot_titles`。日期必须为 `YYYYMMDD`；项目未配置封面时必须显式提醒，不能把无封面目录称为完整交付包。
+
+```powershell
+python scripts/package_delivery.py project.json --delivery-date 20260812 --cover path\to\cover.png
+python scripts/package_delivery.py project.json --delivery-date 20260812 --cover path\to\cover.png --execute
+```
+
 ## 安全边界
 
 - 默认命令只读或写本地计划；真实提交必须同时具备 `--execute` 和精确确认短语。免费活动也保留确认门，避免误启动长任务。
@@ -123,4 +140,5 @@ python scripts/flux_video_loop.py run examples/ai-learning-star.project.json --e
 - `.flux-video-state.json`：任务 ID、轮询地址、状态、本地成果路径和错误；不含 API Key。
 - `clips/<shot-id>/`：下载的全部 MP4 或 draft cache。
 - `requests/<shot-id>.json`：实际无密钥请求体，便于复现。
+- `D:\data\AI资料\YYYYMMDD\项目名\`：Windows 默认剪辑交付包，包含 `00` 封面、顺序镜头和可选 `99` 测试片；不替代项目原始输出。
 - 人工审片结论：`ship / usable_with_defect / experimental / reject`。
